@@ -1,0 +1,102 @@
+##############################
+## Node
+##############################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+.npm/
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+##############################
+## Env / Secrets
+##############################
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+##############################
+## Vite
+##############################
+dist/
+dist-ssr/
+*.local
+
+##############################
+## Vue / Nuxt
+##############################
+.nuxt/
+.output/
+.vercel/
+.netlify/
+
+##############################
+## React (CRA)
+##############################
+build/
+
+##############################
+## Next.js
+##############################
+.next/
+out/
+next-env.d.ts
+
+##############################
+## Angular
+##############################
+/dist
+/tmp
+/out-tsc
+/bazel-out
+.angular/cache/
+.sass-cache/
+connect.lock
+coverage/
+libpeerconnection.log
+testem.log
+typings/
+
+##############################
+## TypeScript
+##############################
+*.tsbuildinfo
+
+##############################
+## Testing
+##############################
+coverage/
+.nyc_output/
+
+##############################
+## Logs
+##############################
+logs/
+*.log
+
+##############################
+## Editor / IDE
+##############################
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+##############################
+## OS X
+##############################
+.DS_Store
