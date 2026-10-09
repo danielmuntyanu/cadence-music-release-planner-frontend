@@ -1,2 +1,64 @@
 @import 'tailwindcss/theme' layer(tailwind.theme);
 @import 'tailwindcss/utilities' layer(tailwind.utilities);
+
+/* dark:/light: follows theme of Vuetify, not prefers-color-scheme */
+@custom-variant light (&:where(.v-theme--light, .v-theme--light *));
+@custom-variant dark (&:where(.v-theme--dark, .v-theme--dark *));
+
+@theme {
+  /* Breakpoints = defaults of Vuetify (VCol, useDisplay) */
+  --breakpoint-*: initial;
+  --breakpoint-xs: 0px;
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 840px;
+  --breakpoint-lg: 1145px;
+  --breakpoint-xl: 1545px;
+  --breakpoint-xxl: 2138px;
+
+  /* Radius = Vuetify scale */
+  --radius-*: initial;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 24px;
+
+  /* Theme colors of Vuetify as tokens of Tailwind */
+  
+  /* Backgrounds */
+  --color-background: rgb(var(--v-theme-background));
+  --color-surface-lowest: rgb(var(--v-theme-surface-lowest));
+  --color-surface-low: rgb(var(--v-theme-surface-low));
+  --color-surface: rgb(var(--v-theme-surface));
+  --color-surface-light: rgb(var(--v-theme-surface-light));
+  --color-surface-bright: rgb(var(--v-theme-surface-bright));
+  --color-surface-variant: rgb(var(--v-theme-surface-variant));
+
+  /* Text */
+  --color-on-background: rgb(var(--v-theme-on-background));
+  --color-on-surface: rgb(var(--v-theme-on-surface));
+  --color-on-surface-variant: rgb(var(--v-theme-on-surface-variant));
+  --color-on-surface-muted: rgb(var(--v-theme-on-surface-muted));
+
+  /* Borders */
+  --color-border: rgb(var(--v-theme-border));
+  --color-border-subtle: rgb(var(--v-theme-border-subtle));
+
+  /* Brand */
+  --color-primary: rgb(var(--v-theme-primary));
+  --color-on-primary: rgb(var(--v-theme-on-primary));
+  --color-primary-lighten-1: rgb(var(--v-theme-primary-lighten-1));
+  --color-primary-container: rgb(var(--v-theme-primary-container));
+  --color-secondary: rgb(var(--v-theme-secondary));
+  --color-on-secondary: rgb(var(--v-theme-on-secondary));
+
+  /* Statuses */
+  --color-success: rgb(var(--v-theme-success));
+  --color-success-container: rgb(var(--v-theme-success-container));
+  --color-error: rgb(var(--v-theme-error));
+  --color-error-container: rgb(var(--v-theme-error-container));
+  --color-info: rgb(var(--v-theme-info));
+  --color-warning: rgb(var(--v-theme-warning));
+
+  /* Glow */
+  --shadow-primary-glow: 0 0 24px rgb(128 131 255 / 0.25);
+}

@@ -1,3 +1,4 @@
+@layer properties;
 @layer vuetify-core {
   @layer reset, base;
 }

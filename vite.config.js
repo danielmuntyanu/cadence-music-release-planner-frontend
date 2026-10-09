@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
-    vuetify(),
+    vuetify({ styles: { configFile: 'src/styles/settings.scss' } }),
     tailwindcss(),
     vueDevTools(),
   ],
