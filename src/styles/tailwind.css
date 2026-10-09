@@ -60,5 +60,5 @@
   --color-warning: rgb(var(--v-theme-warning));
 
   /* Glow */
-  --shadow-primary-glow: 0 0 24px rgb(128 131 255 / 0.25);
+  --shadow-primary-glow: 0 0 24px rgba(var(--v-theme-primary), 0.25);
 }

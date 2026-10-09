@@ -98,7 +98,7 @@ const light = {
 
 export default createVuetify({
   theme: { 
-    defaultTheme: 'dark', // 'dark' | 'light' | 'system'
+    defaultTheme: 'system', // 'dark' | 'light' | 'system'
     themes: { light, dark },
   },
   icons: {
