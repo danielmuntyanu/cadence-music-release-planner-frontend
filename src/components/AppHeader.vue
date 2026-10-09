@@ -33,19 +33,16 @@ watch(mdAndUp, (wide) => { if (wide) drawer.value = false })
 <template>
   <v-app-bar>
     <div class="flex w-full items-center px-2">
-      <!-- слева -->
       <div class="flex flex-1 items-center">
         <router-link to="/" class="text-xl font-medium text-inherit no-underline">Cadense</router-link>
       </div>
 
-      <!-- по центру -->
       <nav v-if="mdAndUp" class="flex items-center gap-1" aria-label="Main">
         <v-btn v-for="link in visibleLinks" :key="link.to" :to="link.to" :text="link.title" />
       </nav>
 
-      <!-- справа -->
       <div class="flex flex-1 items-center justify-end gap-2">
-        <template v-if="mdAndUp">
+        <template v-if="mdAndUp && auth.ready">
           <template v-if="auth.isAuthenticated">
             <v-btn to="/account" variant="text">
               <template #prepend><UserAvatar :size="24" /></template>
@@ -74,7 +71,7 @@ watch(mdAndUp, (wide) => { if (wide) drawer.value = false })
       <v-list-item v-for="link in visibleLinks" :key="link.to" :to="link.to" :title="link.title" />
     </v-list>
 
-    <template #append>
+    <template #append v-if="auth.ready">
       <div class="flex flex-col gap-2 p-4">
         <template v-if="auth.isAuthenticated">
           <div class="flex flex-col items-center gap-2 pb-2">

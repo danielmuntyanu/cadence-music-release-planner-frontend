@@ -7,7 +7,7 @@ defineProps({ size: { type: Number, default: 32 } })
 const auth = useAuthStore()
 
 const initials = computed(() =>
-  (auth.user?.name ?? '')
+  (auth.user?.displayName ?? '')
     .split(' ')
     .filter(Boolean)
     .slice(0, 2)
