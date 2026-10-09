@@ -1,11 +1,20 @@
 <script setup></script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <v-app>
+    <v-app-bar title="Cadense">
+      <v-btn to="/" text="Home" />
+      <v-btn to="/login" text="Sign-In" />
+      <v-btn color="primary" to="/register" text="Create Account" />
+      <v-btn to="/dashboard" text="Dashboard" />
+    </v-app-bar>
+    <v-main>
+      <router-view />
+    </v-main>
+    <!-- <v-footer>
+
+    </v-footer> -->
+  </v-app>
 </template>
 
 <style scoped></style>
