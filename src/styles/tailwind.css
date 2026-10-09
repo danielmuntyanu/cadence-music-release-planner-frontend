@@ -46,7 +46,7 @@
   /* Brand */
   --color-primary: rgb(var(--v-theme-primary));
   --color-on-primary: rgb(var(--v-theme-on-primary));
-  --color-primary-lighten-1: rgb(var(--v-theme-primary-lighten-1));
+  --color-primary-accent: rgb(var(--v-theme-primary-accent));
   --color-primary-container: rgb(var(--v-theme-primary-container));
   --color-secondary: rgb(var(--v-theme-secondary));
   --color-on-secondary: rgb(var(--v-theme-on-secondary));

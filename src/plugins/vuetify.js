@@ -32,7 +32,7 @@ const dark = {
     // brand
     primary: '#8083ff',
     'on-primary': '#0d0096',
-    'primary-lighten-1': '#c0c1ff',
+    'primary-accent': '#c0c1ff',
     'primary-container': '#393b63',
 
     // Secondary button
@@ -51,22 +51,54 @@ const dark = {
   },
 }
 
+const light = {
+  dark: false,
+  colors: {
+    // Backgrounds
+    background: '#f3f2fb',
+    'surface-lowest': '#e6e4f4',
+    'surface-low': '#f9f8fe',
+    surface: '#ffffff',
+    'surface-light': '#ebe9f7',
+    'surface-bright': '#dfdcf1',
+    'surface-variant': '#ebe9f7', // bg of tooltips
+
+    // Text
+    'on-background': '#1b1a26',
+    'on-surface': '#1b1a26',
+    'on-surface-variant': '#474560',
+    'on-surface-muted': '#63618a',
+
+    // borders
+    border: '#d9d6ee',
+    'border-subtle': '#e8e6f5',
+
+    // brand
+    primary: '#5548e0',
+    'on-primary': '#ffffff',
+    'primary-accent': '#4639c8',
+    'primary-container': '#e3e0ff',
+
+    // Secondary button
+    secondary: '#ebe9f7',
+    'on-secondary': '#1b1a26',
+
+    // statuses
+    success: '#0a7350',
+    'success-container': '#d3f2e4',
+    error: '#ba1a1a',
+    'error-container': '#ffdad6',
+  },
+  variables: {
+    'border-color': '#c7c4d7',
+    'border-opacity': 0.08,
+  },
+}
 
 
 export default createVuetify({
   theme: { 
     defaultTheme: 'dark', // 'dark' | 'light' | 'system'
-    themes: {
-      light: {
-        colors: {
-          primary: '#1867C0',
-          secondary: '#48A9A6',
-          background: '#FFFFFF',
-          surface: '#FFFFFF',
-          brand: '#7C3AED', 
-        },
-      },
-      dark,
-    },
+    themes: { light, dark },
   },
 })
