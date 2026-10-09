@@ -5,6 +5,7 @@ import '@fontsource/roboto/700.css'
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles'
 
+
 import { createVuetify } from 'vuetify'
 
 const dark = {
@@ -95,10 +96,12 @@ const light = {
   },
 }
 
-
 export default createVuetify({
   theme: { 
     defaultTheme: 'dark', // 'dark' | 'light' | 'system'
     themes: { light, dark },
+  },
+  icons: {
+    defaultSet: 'mdi',
   },
 })
