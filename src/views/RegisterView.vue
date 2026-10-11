@@ -1,6 +1,6 @@
 <script setup>
 import PageContainer from '@/components/PageContainer.vue'
-import RegisterForm from '@/components/RegisterForm.vue'
+import RegisterForm from '@/components/auth/RegisterForm.vue'
 </script>
 
 <template>
