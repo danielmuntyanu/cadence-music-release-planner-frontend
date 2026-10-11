@@ -29,3 +29,15 @@ export const displayNameRules = [
 export const bioRules = [
   (v) => (v?.trim().length ?? 0) <= 500 || 'Bio must be at most 500 characters',
 ]
+
+
+// Avatar upload validation
+
+export const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+export const AVATAR_MAX_BYTES = 2 * 1024 * 1024
+
+export function validateAvatarFile(file) {
+  if (!AVATAR_TYPES.includes(file.type)) return 'Use a PNG, JPG or WebP image'
+  if (file.size > AVATAR_MAX_BYTES) return 'The image must be 2 MB or smaller'
+  return null
+}
