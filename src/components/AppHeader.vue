@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useDisplay, useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
 import UserAvatar from '@/components/UserAvatar.vue'
+import { ROLES } from '@/constants/roles'
 
 const theme = useTheme()
 const { mdAndUp } = useDisplay()
@@ -17,8 +18,12 @@ const drawer = ref(false)
 const links = [
   { title: 'Home', to: '/' },
   { title: 'Dashboard', to: '/dashboard', requiresAuth: true },
+  { title: 'Admin', to: '/admin', roles: [ROLES.ADMIN] },
 ]
-const visibleLinks = computed(() => links.filter((l) => !l.requiresAuth || auth.isAuthenticated))
+
+const visibleLinks = computed(() =>
+  links.filter((l) => (l.roles ? auth.hasAnyRole(l.roles) : !l.requiresAuth || auth.isAuthenticated)),
+)
 
 async function onLogout() {
   drawer.value = false
