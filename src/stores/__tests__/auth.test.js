@@ -4,7 +4,7 @@ import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth'
 
 vi.mock('@/services/auth.service', () => ({
-  authService: { me: vi.fn(), login: vi.fn(), logout: vi.fn() },
+  authService: { me: vi.fn(), login: vi.fn(), logout: vi.fn(), register: vi.fn() },
 }))
 
 const USER = { id: 1, username: 'daniel', roles: ['USER'] }

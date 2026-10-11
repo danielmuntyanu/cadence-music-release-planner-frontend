@@ -6,6 +6,7 @@ import { usernameRules, passwordRules } from '@/utils/validators'
 import { useRedirectTarget } from '@/composables/useRedirectTarget'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const redirectTo = useRedirectTarget()
 
@@ -77,7 +78,7 @@ async function onSubmit(event) {
 
         <p class="mt-4 text-center text-sm text-on-surface-variant">
             No account yet?
-            <router-link to="/register" class="text-primary-accent">Create one</router-link>
+            <router-link :to="{ name: 'register', query: route.query }" class="text-primary-accent">Create one</router-link>
         </p>
     </v-form>
 </template>

@@ -44,6 +44,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function register(userData) {
+    await authService.register(userData)
+    
+    await login({ username: userData.username, password: userData.password })
+  }
+
   function hasRole(role) {
     return roles.value.includes(role)
   }
@@ -52,6 +58,6 @@ export const useAuthStore = defineStore('auth', () => {
     return Array.isArray(required) && required.some((role) => hasRole(role))
   }
 
-  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole }
+  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole, register }
 
 })

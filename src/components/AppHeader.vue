@@ -23,7 +23,7 @@ const visibleLinks = computed(() =>
 async function onLogout() {
   drawer.value = false
   auth.logout()
-  await router.push('/')
+  await router.push('/login')
 }
 
 watch(() => route.fullPath, () => (drawer.value = false))

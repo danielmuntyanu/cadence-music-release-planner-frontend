@@ -15,7 +15,7 @@ const me = async () => {
 }
 
 const register = async (userData) => {
-    const response = await api.post('/auth/register', userData)
+    const response = await api.post('/users', userData)
     return response.data
 }
 
