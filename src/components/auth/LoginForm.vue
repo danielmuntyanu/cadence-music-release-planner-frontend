@@ -3,22 +3,16 @@ import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usernameRules, passwordRules } from '@/utils/validators'
+import { useRedirectTarget } from '@/composables/useRedirectTarget'
 
 const auth = useAuthStore()
-const route = useRoute()
 const router = useRouter()
+const redirectTo = useRedirectTarget()
 
 const form = ref({username: '', password: ''})
 const showPassword = ref(false)
 const error = ref(null)
 const loading = ref(false)
-
-// Internal site paths only: protection against open redirects (?redirect=//evil.com)
-const redirectTo = computed(() => {
-  const r = route.query.redirect
-  const safe = typeof r === 'string' && r.startsWith('/') && !r.startsWith('//') && !r.startsWith('/\\')
-  return safe ? r : '/'
-})
 
 async function onSubmit(event) {
     const { valid } = await event
