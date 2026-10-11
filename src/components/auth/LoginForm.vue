@@ -47,7 +47,7 @@ async function onSubmit(event) {
         })
         await router.push(redirectTo.value)
     } catch (e) {
-        error.value = e.response?.status === 401 ? 'Wrong email or password' : 'Something went wrong. Try again.'
+        error.value = e.response?.status === 401 ? 'Wrong email or password: ' + e.response.data : 'Something went wrong. Try again later.'
     } finally {
         loading.value = false
     }
