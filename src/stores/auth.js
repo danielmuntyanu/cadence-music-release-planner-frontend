@@ -19,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = data
     } catch (e) {
       user.value = null
-      if (e.response?.status !== 401) console.error('auth/me failed', e)
+      if (![401, 403].includes(e.response?.status)) console.error('### auth/me failed:\n', e)
     } finally {
       ready.value = true
     }
