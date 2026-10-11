@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import * as authApi from '@/api/auth'
+import { authService } from '@/services/auth.service'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -15,7 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchMe() {
     try {
-      const { data } = await authApi.me()
+      const { data } = await authService.me()
       user.value = data
     } catch (e) {
       user.value = null
@@ -26,13 +26,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(credentials) {
-    const { data } = await authApi.login(credentials)
+    const { data } = await authService.login(credentials)
     user.value = data
   }
 
   async function logout() {
     try {
-      await authApi.logout()
+      await authService.logout()
     } finally {
       user.value = null
     }
