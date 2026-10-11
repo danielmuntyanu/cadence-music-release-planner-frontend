@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usernameRules, passwordRules } from '@/utils/validators'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -11,20 +12,6 @@ const form = ref({username: '', password: ''})
 const showPassword = ref(false)
 const error = ref(null)
 const loading = ref(false)
-
-const usernameRules = [
-    (v) => !!v?.trim() || 'Username is required',
-    (v) => v.trim().length >= 3 || 'Username must be at least 3 characters',
-]
-
-const passwordRules = [
-    (v) => !!v?.trim() || 'Password is required',
-    (v) => v.trim().length >= 8 || 'Password must be at least 8 characters',
-    (v) => /[a-z]/.test(v) || 'Add at least one lowercase letter',
-    (v) => /[A-Z]/.test(v) || 'Add at least one uppercase letter',
-    (v) => /\d/.test(v) || 'Add at least one digit',
-    (v) => /[^A-Za-z0-9\s]/.test(v) || 'Add at least one special character',
-]
 
 // Internal site paths only: protection against open redirects (?redirect=//evil.com)
 const redirectTo = computed(() => {

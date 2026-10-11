@@ -5,6 +5,7 @@ import { useDisplay, useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/auth'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { ROLES } from '@/constants/roles'
+import { links } from '@/constants/navigation'
 
 const theme = useTheme()
 const { mdAndUp } = useDisplay()
@@ -14,12 +15,6 @@ const auth = useAuthStore()
 
 const isDark = computed(() => theme.name.value === 'dark')
 const drawer = ref(false)
-
-const links = [
-  { title: 'Home', to: '/' },
-  { title: 'Dashboard', to: '/dashboard', requiresAuth: true },
-  { title: 'Admin', to: '/admin', roles: [ROLES.ADMIN] },
-]
 
 const visibleLinks = computed(() =>
   links.filter((l) => (l.roles ? auth.hasAnyRole(l.roles) : !l.requiresAuth || auth.isAuthenticated)),
