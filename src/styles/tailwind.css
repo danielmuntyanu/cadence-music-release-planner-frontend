@@ -63,7 +63,6 @@
   --shadow-primary-glow: 0 0 24px rgba(var(--v-theme-primary), 0.25);
 }
 
-
 /*
  * Studio texture: a faint DAW-style beat grid, a soft brand glow and film grain.
  * Colors come from the Vuetify theme variables, so it adapts to light and dark themes.
@@ -116,5 +115,22 @@
     &::after {
       opacity: 0.05;
     }
+  }
+}
+
+
+/*
+ * Opt-in typography reset for marketing pages. Tailwind's full preflight is intentionally not
+ * loaded (it would override Vuetify component styles), so default browser margins and list
+ * styles are neutralised only inside the element that carries this class.
+ */
+@utility typo-reset {
+  & :where(h1, h2, h3, h4, h5, h6, p, blockquote, figure, dl, dd) {
+    margin: 0;
+  }
+  & :where(ul, ol) {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 }
