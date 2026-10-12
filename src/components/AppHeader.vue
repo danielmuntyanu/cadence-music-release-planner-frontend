@@ -47,7 +47,7 @@ watch(mdAndUp, (wide) => { if (wide) drawer.value = false })
       <div class="flex flex-1 items-center justify-end gap-2">
         <template v-if="mdAndUp && auth.ready">
           <template v-if="auth.isAuthenticated">
-            <v-btn to="/account" variant="text">
+            <v-btn to="/settings" variant="text">
               <template #prepend><UserAvatar :size="24" /></template>
               Account
             </v-btn>
@@ -79,9 +79,9 @@ watch(mdAndUp, (wide) => { if (wide) drawer.value = false })
         <template v-if="auth.isAuthenticated">
           <div class="flex flex-col items-center gap-2 pb-2">
             <UserAvatar :size="72" />
-            <span class="text-sm text-on-surface-variant">{{ auth.user.name }}</span>
+            <span class="text-sm text-on-surface-variant">{{ auth.user?.displayName ?? auth.user?.username ?? '' }}</span>
           </div>
-          <v-btn to="/account" text="Account" variant="tonal" color="primary" block />
+          <v-btn to="/settings" text="Account" variant="tonal" color="primary" block />
           <v-btn text="Logout" block @click="onLogout" />
         </template>
         <template v-else>

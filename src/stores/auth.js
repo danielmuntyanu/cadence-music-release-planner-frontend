@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchMe() {
     try {
-      const { data } = await authService.me()
+      const data = await authService.me()
       user.value = data
     } catch (e) {
       user.value = null
@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(credentials) {
-    const { data } = await authService.login(credentials)
+    const data = await authService.login(credentials)
     user.value = data
   }
 

@@ -53,7 +53,7 @@ async function onSubmit(event) {
 </script>
 
 <template>
-  <v-form ref="formRef" validate-on="invalid-input" @submit.prevent="onSubmit">
+  <v-form ref="formRef" validate-on="invalid-input" @submit.prevent="onSubmit" class="[&_.v-input]:mb-2">
     <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4">
       {{ error }}
     </v-alert>
