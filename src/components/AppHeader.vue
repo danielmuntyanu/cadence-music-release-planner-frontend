@@ -37,7 +37,7 @@ watch(mdAndUp, (wide) => { if (wide) drawer.value = false })
   <v-app-bar>
     <div class="flex w-full items-center px-2">
       <div class="flex flex-1 items-center">
-        <router-link to="/" class="text-xl font-medium text-inherit no-underline">Cadense</router-link>
+        <router-link to="/" class="text-xl font-medium text-inherit no-underline">Cadence</router-link>
       </div>
 
       <nav v-if="mdAndUp" class="flex items-center gap-1" aria-label="Main">

@@ -91,7 +91,7 @@ describe('AppHeader', () => {
 
     it('показывает логотип со ссылкой на главную', () => {
       const brand = appBar().find('a[href="/"]')
-      expect(brand.text()).toBe('Cadense')
+      expect(brand.text()).toBe('Cadence')
     })
 
     it('в навигации только публичные ссылки', () => {
