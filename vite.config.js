@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -7,13 +7,16 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import vuetify from 'vite-plugin-vuetify'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig( ({ mode }) => {
-
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const isTest = mode === 'test'
 
-  const CERT_KEY_PATH = env.CERT_KEY_PATH
-  const CERT_PATH = env.CERT_PATH
-  const hasLocalCerts = fs.existsSync(CERT_KEY_PATH) && fs.existsSync(CERT_PATH)
+  const { CERT_KEY_PATH, CERT_PATH } = env
+  const hasLocalCerts =
+    !isTest &&
+    Boolean(CERT_KEY_PATH && CERT_PATH) &&
+    fs.existsSync(CERT_KEY_PATH) &&
+    fs.existsSync(CERT_PATH)
 
   return {
     plugins: [
@@ -21,8 +24,9 @@ export default defineConfig( ({ mode }) => {
       vueJsx(),
       vuetify({ styles: { configFile: 'src/styles/settings.scss' } }),
       tailwindcss(),
-      vueDevTools(),
-    ],
+      // DevTools в тестах не нужен и может мешать
+      !isTest && vueDevTools(),
+    ].filter(Boolean),
     server: {
       ...(hasLocalCerts && {
         https: {
@@ -38,5 +42,4 @@ export default defineConfig( ({ mode }) => {
       },
     },
   }
-
 })
