@@ -15,7 +15,7 @@ let store
 let errorSpy
 
 async function signInAs(account) {
-  authService.login.mockResolvedValue({ data: account })
+  authService.login.mockResolvedValue(account)
   await store.login({ username: account.username, password: 'Secret1!' })
 }
 
@@ -39,7 +39,7 @@ describe('initial state', () => {
 
 describe('init / fetchMe', () => {
   it('stores the user and becomes ready', async () => {
-    authService.me.mockResolvedValue({ data: USER })
+    authService.me.mockResolvedValue(USER)
     await store.init()
     expect(store.user).toEqual(USER)
     expect(store.ready).toBe(true)
@@ -84,7 +84,7 @@ describe('init / fetchMe', () => {
   })
 
   it('drops the previous user when a later fetchMe fails with 401', async () => {
-    authService.me.mockResolvedValueOnce({ data: ADMIN }).mockRejectedValueOnce(httpError(401))
+    authService.me.mockResolvedValueOnce(ADMIN).mockRejectedValueOnce(httpError(401))
     await store.fetchMe()
     expect(store.isAdmin).toBe(true)
     await store.fetchMe()
@@ -96,7 +96,7 @@ describe('init / fetchMe', () => {
 describe('login', () => {
   it('sends the credentials and stores the returned user', async () => {
     const credentials = { username: 'daniel', password: 'Secret1!' }
-    authService.login.mockResolvedValue({ data: USER })
+    authService.login.mockResolvedValue(USER)
     await store.login(credentials)
     expect(authService.login).toHaveBeenCalledWith(credentials)
     expect(store.user).toEqual(USER)
@@ -181,7 +181,7 @@ describe('roles', () => {
   })
 
   it('picks up changed roles after fetchMe', async () => {
-    authService.me.mockResolvedValueOnce({ data: ADMIN }).mockResolvedValueOnce({ data: USER })
+    authService.me.mockResolvedValueOnce(ADMIN).mockResolvedValueOnce({ data: USER })
     await store.fetchMe()
     expect(store.isAdmin).toBe(true)
     await store.fetchMe()
