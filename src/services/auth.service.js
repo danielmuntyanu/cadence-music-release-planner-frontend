@@ -15,8 +15,8 @@ const me = async () => {
     return toUser(response.data)
 }
 
-const register = async (userData) => {
-    const response = await api.post('/users', userData)
+const register = async (payload) => {
+    const response = await api.post('/users', payload)
     return toUser(response.data)
 }
 

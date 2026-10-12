@@ -45,10 +45,10 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(userData) {
-    await authService.register(userData)
+  async function register(payload) {
+    await authService.register(payload)
     
-    await login({ username: userData.username, password: userData.password })
+    await login({ username: payload.username, password: payload.password })
   }
 
   function hasRole(role) {
