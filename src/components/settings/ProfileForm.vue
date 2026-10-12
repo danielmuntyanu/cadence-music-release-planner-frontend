@@ -9,7 +9,7 @@ const auth = useAuthStore()
 const fromUser = (u) => ({
   username: u?.username ?? '',
   email: u?.email ?? '',
-  display_name: u?.display_name ?? '',
+  displayName: u?.displayName ?? '',
   bio: u?.bio ?? '',
 })
 

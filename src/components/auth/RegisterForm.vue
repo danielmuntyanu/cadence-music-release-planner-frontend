@@ -52,7 +52,7 @@ async function onSubmit(event) {
             username: form.value.username.trim(),
             email: form.value.email.trim(),
             password: form.value.password,
-            display_name: form.value.displayName.trim() || undefined,
+            displayName: form.value.displayName.trim() || undefined,
             bio: form.value.bio.trim() || undefined,
         })
         await router.push(redirectTo.value)

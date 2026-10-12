@@ -16,7 +16,7 @@ const loading = ref(false)
 
 const accept = AVATAR_TYPES.join(',')
 const initial = computed(() =>
-  (auth.user?.display_name || auth.user?.username || '?').charAt(0).toUpperCase(),
+  (auth.user?.displayName || auth.user?.username || '?').charAt(0).toUpperCase(),
 )
 const src = computed(() => previewUrl.value ?? auth.user?.avatar_url ?? null)
 
