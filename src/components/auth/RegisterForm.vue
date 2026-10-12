@@ -10,6 +10,7 @@ import {
     passwordRules,
     usernameRules,
 } from '@/utils/validators'
+import { useSubmit } from '@/composables/useSubmit'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -26,42 +27,34 @@ const form = ref({
 })
 
 const showPassword = ref(false)
-const error = ref(null)
-const loading = ref(false)
+const { loading, error, submit } = useSubmit({
+  errorMessages: {
+    409: 'This username or email is already taken',
+    400: 'Please check the entered data and try again',
+    422: 'Please check the entered data and try again',
+  },
+})
 
 const confirmPasswordRules = [
     (v) => !!v || 'Confirm your password',
     (v) => v === form.value.password || 'Passwords do not match',
 ]
 
-const errorMessages = {
-    409: 'This username or email is already taken',
-    400: 'Please check the entered data and try again',
-    422: 'Please check the entered data and try again',
-}
-
 async function onSubmit(event) {
-    const { valid } = await event
-    if (!valid || loading.value) return
+  const { valid } = await event
+  if (!valid) return
 
-    loading.value = true
-    error.value = null
-
-    try {
-        await auth.register({
-            username: form.value.username.trim(),
-            email: form.value.email.trim(),
-            password: form.value.password,
-            displayName: form.value.displayName.trim() || undefined,
-            bio: form.value.bio.trim() || undefined,
-        })
-        await router.push(redirectTo.value)
-    } catch (e) {
-        error.value = errorMessages[e.response?.status] ?? 'Something went wrong. Try again.'
-    } finally {
-        loading.value = false
-    }
-
+  const ok = await submit(() =>
+    auth.register({
+      username: form.value.username.trim(),
+      email: form.value.email.trim(),
+      password: form.value.password,
+      // Empty optional fields are omitted from the payload
+      displayName: form.value.displayName.trim() || undefined,
+      bio: form.value.bio.trim() || undefined,
+    }),
+  )
+  if (ok) await router.push(redirectTo.value)
 }
 </script>
 

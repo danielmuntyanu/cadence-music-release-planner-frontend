@@ -2,13 +2,19 @@
 import { ref } from 'vue'
 import { userService } from '@/services/user.service'
 import { passwordRules } from '@/utils/validators'
+import { useSubmit } from '@/composables/useSubmit'
 
 const formRef = ref(null)
 const form = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const showPassword = ref(false)
-const error = ref(null)
-const success = ref(false)
-const loading = ref(false)
+const { loading, error, success, submit } = useSubmit({
+  errorMessages: {
+    401: 'Current password is incorrect',
+    403: 'Current password is incorrect',
+    400: 'Please check the entered data and try again',
+    422: 'Please check the entered data and try again',
+  },
+})
 
 const currentPasswordRules = [(v) => !!v || 'Enter your current password']
 const newPasswordRules = [
@@ -20,35 +26,21 @@ const confirmPasswordRules = [
   (v) => v === form.value.newPassword || 'Passwords do not match',
 ]
 
-const errorMessages = {
-  401: 'Current password is incorrect',
-  403: 'Current password is incorrect',
-  400: 'Please check the entered data and try again',
-  422: 'Please check the entered data and try again',
-}
-
 async function onSubmit(event) {
   const { valid } = await event
-  if (!valid || loading.value) return
+  if (!valid) return
 
-  loading.value = true
-  error.value = null
-  success.value = false
-
-  try {
-    await userService.changePassword({
+  const ok = await submit(() =>
+    userService.changePassword({
       currentPassword: form.value.currentPassword,
       newPassword: form.value.newPassword,
-    })
-    form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    showPassword.value = false
-    formRef.value?.resetValidation()
-    success.value = true
-  } catch (e) {
-    error.value = errorMessages[e.response?.status] ?? 'Something went wrong. Try again.'
-  } finally {
-    loading.value = false
-  }
+    }),
+  )
+  if (!ok) return
+
+  form.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+  showPassword.value = false
+  formRef.value?.resetValidation()
 }
 </script>
 

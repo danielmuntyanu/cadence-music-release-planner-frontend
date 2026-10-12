@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { userService } from '@/services/user.service'
 import { bioRules, displayNameRules, emailRules, usernameRules } from '@/utils/validators'
+import { useSubmit } from '@/composables/useSubmit'
 
 const auth = useAuthStore()
 
@@ -14,9 +15,13 @@ const fromUser = (u) => ({
 })
 
 const form = ref(fromUser(auth.user))
-const error = ref(null)
-const success = ref(false)
-const loading = ref(false)
+const { loading, error, success, submit } = useSubmit({
+  errorMessages: {
+    409: 'This username or email is already taken',
+    400: 'Please check the entered data and try again',
+    422: 'Please check the entered data and try again',
+  },
+})
 
 watch(() => auth.user, (u) => (form.value = fromUser(u)))
 
@@ -30,34 +35,18 @@ const changes = computed(() => {
 })
 const isDirty = computed(() => Object.keys(changes.value).length > 0)
 
-const errorMessages = {
-  409: 'This username or email is already taken',
-  400: 'Please check the entered data and try again',
-  422: 'Please check the entered data and try again',
-}
-
 function reset() {
   form.value = fromUser(auth.user)
   error.value = null
 }
-
 async function onSubmit(event) {
   const { valid } = await event
-  if (!valid || !isDirty.value || loading.value) return
+  if (!valid || !isDirty.value) return
 
-  loading.value = true
-  error.value = null
-  success.value = false
-
-  try {
+  await submit(async () => {
     await userService.updateProfile(changes.value)
-    await auth.fetchMe() // сервер — источник правды
-    success.value = true
-  } catch (e) {
-    error.value = errorMessages[e.response?.status] ?? 'Something went wrong. Try again.'
-  } finally {
-    loading.value = false
-  }
+    await auth.fetchMe() // the server is the source of truth
+  })
 }
 </script>
 

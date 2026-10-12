@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { usernameRules, passwordRules } from '@/utils/validators'
 import { useRedirectTarget } from '@/composables/useRedirectTarget'
+import { useSubmit } from '@/composables/useSubmit'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -12,27 +13,18 @@ const redirectTo = useRedirectTarget()
 
 const form = ref({username: '', password: ''})
 const showPassword = ref(false)
-const error = ref(null)
-const loading = ref(false)
+const { loading, error, submit } = useSubmit({
+  errorMessages: { 401: 'Wrong username or password' },
+})
 
 async function onSubmit(event) {
-    const { valid } = await event
-    if (!valid || loading.value) return
+  const { valid } = await event // v-form validates all fields on its own
+  if (!valid) return
 
-    loading.value = true
-    error.value = null
-
-    try {
-        await auth.login({
-            username: form.value.username.trim(),
-            password: form.value.password,
-        })
-        await router.push(redirectTo.value)
-    } catch (e) {
-        error.value = e.response?.status === 401 ? 'Wrong email or password: ' + e.response.data : 'Something went wrong. Try again later.'
-    } finally {
-        loading.value = false
-    }
+  const ok = await submit(() =>
+    auth.login({ username: form.value.username.trim(), password: form.value.password }),
+  )
+  if (ok) await router.push(redirectTo.value)
 }
 </script>
 

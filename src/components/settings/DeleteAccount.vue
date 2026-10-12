@@ -9,8 +9,9 @@ const router = useRouter()
 
 const dialog = ref(false)
 const confirmation = ref('')
-const error = ref(null)
-const loading = ref(false)
+const { loading, error, submit } = useSubmit({
+  defaultError: 'Could not delete the account. Try again.',
+})
 
 const canDelete = computed(() => !!auth.user && confirmation.value === auth.user.username)
 
@@ -22,25 +23,21 @@ watch(dialog, (open) => {
 })
 
 async function onDelete() {
-  if (!canDelete.value || loading.value) return
+  if (!canDelete.value) return
 
-  loading.value = true
-  error.value = null
-
-  try {
+  const ok = await submit(async () => {
     await userService.deleteAccount()
-    
+    // The account is already gone: the server-side logout may fail,
+    // but the local state must be cleared either way
     try {
       await auth.logout()
     } catch {
-      /* игнорируем */
+      /* ignored on purpose */
     }
+  })
+  if (ok) {
     dialog.value = false
     await router.push({ name: 'login' })
-  } catch {
-    error.value = 'Could not delete the account. Try again.'
-  } finally {
-    loading.value = false
   }
 }
 </script>

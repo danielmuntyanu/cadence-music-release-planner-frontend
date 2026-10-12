@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { userService } from '@/services/user.service'
 import { AVATAR_TYPES, validateAvatarFile } from '@/utils/validators'
+import { useSubmit } from '@/composables/useSubmit'
 
 const uploadEnabled = import.meta.env.VITE_AVATAR_UPLOAD_ENABLED === 'true'
 
@@ -10,9 +11,7 @@ const auth = useAuthStore()
 const input = ref(null)
 const file = ref(null)
 const previewUrl = ref(null)
-const error = ref(null)
-const success = ref(false)
-const loading = ref(false)
+const { loading, error, success, submit } = useSubmit()
 
 const accept = AVATAR_TYPES.join(',')
 const initial = computed(() =>
@@ -46,20 +45,11 @@ function cancel() {
 }
 
 async function run(action) {
-  if (loading.value) return
-  loading.value = true
-  error.value = null
-  success.value = false
-  try {
+  const ok = await submit(async () => {
     await action()
     await auth.fetchMe()
-    cancel()
-    success.value = true
-  } catch {
-    error.value = 'Something went wrong. Try again.'
-  } finally {
-    loading.value = false
-  }
+  })
+  if (ok) cancel() // clears the preview and the selected file
 }
 
 const upload = () => file.value && run(() => userService.uploadAvatar(file.value))

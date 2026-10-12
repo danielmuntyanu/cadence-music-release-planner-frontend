@@ -1,13 +1,13 @@
-import axios from "axios";
+import axios from 'axios'
 
-export default axios.create({
-    baseURL: import.meta.env.VITE_API_URL, 
-    timeout: 10000,
-    withCredentials: true,
-    withXSRFToken: true,
-    xsrfCookieName: 'XSRF-TOKEN',
-    xsrfHeaderName: 'X-XSRF-TOKEN',
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+  timeout: 10000,
+  withCredentials: true,
+  withXSRFToken: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
 })
 
 
-
+export default api
