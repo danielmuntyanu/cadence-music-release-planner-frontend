@@ -20,7 +20,7 @@ const chaos = [
   },
 ]
 
-const cadense = [
+const cadence = [
   {
     title: 'Automated milestone offsets',
     text: 'Enter your global drop date once; every delivery gate is calculated backwards from it.',
@@ -43,9 +43,9 @@ const cadense = [
 <template>
   <LandingSection
     band
-    eyebrow="Why Cadense"
+    eyebrow="Why Cadence"
     title="Built for Musicians, Not Accountants."
-    subtitle="General project tools don't understand pitch windows, ISRC codes or mastering revisions. Cadense is built around release timelines from the ground up."
+    subtitle="General project tools don't understand pitch windows, ISRC codes or mastering revisions. Cadence is built around release timelines from the ground up."
     size="lg"
   >
     <div class="grid gap-6 md:grid-cols-2">
@@ -74,10 +74,10 @@ const cadense = [
         <v-card-text class="p-5 sm:p-6">
           <h3 class="mb-5 flex items-center gap-2 text-lg font-medium text-on-surface">
             <v-icon icon="mdi-check-circle-outline" class="text-primary-accent" />
-            The Cadense way
+            The Cadence way
           </h3>
           <ul class="flex flex-col gap-4">
-            <li v-for="item in cadense" :key="item.title" class="flex gap-3">
+            <li v-for="item in cadence" :key="item.title" class="flex gap-3">
               <v-icon icon="mdi-check" size="18" class="mt-0.5 shrink-0 text-success" />
               <p class="text-sm text-on-surface-variant">
                 <strong class="font-medium text-on-surface">{{ item.title }}.</strong>

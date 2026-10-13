@@ -32,7 +32,7 @@ const stateStyle = {
         <span
           class="min-w-0 flex-1 truncate rounded-md bg-surface-lowest px-3 py-1 text-xs text-on-surface-muted"
         >
-          cadense.app/releases/neon-velvet
+          cadence.app/releases/neon-velvet
         </span>
         <v-chip size="x-small" color="success" variant="tonal" prepend-icon="mdi-check">
           Lead time OK
