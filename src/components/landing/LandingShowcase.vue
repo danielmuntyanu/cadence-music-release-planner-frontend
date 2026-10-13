@@ -80,7 +80,7 @@ const statusColor = { Locked: 'success', Pitched: 'primary', 'In review': 'warni
         </ul>
 
         <div class="overflow-x-auto rounded-lg border border-border-subtle">
-          <table class="w-full min-w-[34rem] text-left text-sm">
+          <table class="w-full min-w-136 text-left text-sm">
             <thead class="bg-surface-low text-xs uppercase tracking-wider text-on-surface-muted">
               <tr>
                 <th class="px-4 py-2.5 font-medium">#</th>
