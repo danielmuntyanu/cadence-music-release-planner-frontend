@@ -7,6 +7,8 @@ import ArtistList from '@/components/artists/ArtistList.vue'
 import ArtistsEmptyState from '@/components/artists/ArtistsEmptyState.vue'
 import ArtistCreatePanel from '@/components/artists/ArtistCreatePanel.vue'
 import { useArtistsStore } from '@/stores/artists'
+import ArtistEditDialog from '@/components/artists/ArtistEditDialog.vue'
+import ArtistDeleteDialog from '@/components/artists/ArtistDeleteDialog.vue'
 
 const PAGE_SIZE = 12 // divisible by 2, 3 and 4 so every grid row is full
 const VIEW_STORAGE_KEY = 'cadence.artists.view'
@@ -37,6 +39,27 @@ const filtered = computed(() => {
 const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / PAGE_SIZE)))
 const pagedArtists = computed(() => filtered.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
 
+const editOpen = ref(false)
+const editTarget = ref(null)
+const deleteOpen = ref(false)
+const deleteTarget = ref(null)
+const snackbarText = ref('')
+
+function openEdit(artist) {
+  editTarget.value = artist
+  editOpen.value = true
+}
+
+function openDelete(artist) {
+  deleteTarget.value = artist
+  deleteOpen.value = true
+}
+
+function notify(text) {
+  snackbarText.value = text
+  snackbar.value = true
+}
+
 watch(search, () => { page.value = 1 })
 watch(pageCount, (count) => { if (page.value > count) page.value = count })
 watch(page, () => window.scrollTo({ top: 0, behavior: 'smooth' }))
@@ -55,7 +78,7 @@ function readView() {
 async function onCreated(artist) {
   creating.value = false
   search.value = ''
-  snackbar.value = true
+  notify('Artist created')
 
   // Wait for the search watcher to reset the page, then jump to the new artist
   await nextTick()
@@ -144,18 +167,27 @@ onMounted(() => artistsStore.load())
 
       <v-fade-transition v-else mode="out-in">
         <div
-          v-if="view === 'grid'"
-          :key="`grid-${page}`"
-          class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            v-if="view === 'grid'"
+            :key="`grid-${page}`"
+            class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
-          <ArtistCard
-            v-for="artist in pagedArtists"
-            :key="artist.id"
-            :artist="artist"
-            :highlighted="artist.id === highlightedId"
-          />
+            <ArtistCard
+                v-for="artist in pagedArtists"
+                :key="artist.id"
+                :artist="artist"
+                :highlighted="artist.id === highlightedId"
+                @edit="openEdit"
+                @delete="openDelete"
+            />
         </div>
-        <ArtistList v-else :key="`list-${page}`" :artists="pagedArtists" :highlighted-id="highlightedId" />
+        <ArtistList
+            v-else
+            :key="`list-${page}`"
+            :artists="pagedArtists"
+            :highlighted-id="highlightedId"
+            @edit="openEdit"
+            @delete="openDelete"
+        />
       </v-fade-transition>
 
       <v-pagination
@@ -168,7 +200,9 @@ onMounted(() => artistsStore.load())
         class="mt-8"
       />
     </template>
-
-    <v-snackbar v-model="snackbar" color="success" timeout="2500">Artist created</v-snackbar>
+    
+    <ArtistEditDialog v-model="editOpen" :artist="editTarget" @updated="notify('Changes saved')" />
+    <ArtistDeleteDialog v-model="deleteOpen" :artist="deleteTarget" @deleted="notify('Artist deleted')" />
+    <v-snackbar v-model="snackbar" color="success" timeout="2500">{{ snackbarText }}</v-snackbar>
   </PageContainer>
 </template>

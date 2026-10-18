@@ -5,7 +5,7 @@ const toArtists = (data) => (Array.isArray(data) ? data.map(toArtist).filter(Boo
 
 export const artistService = {
   getAll: () =>
-    api.get('/artists').then(({ data }) => toArtists(data)),
+    api.get('/artists').then(({ data }) => toArtists(data?.content)),
 
   getById: (id) =>
     api.get(`/artists/${id}`).then(({ data }) => toArtist(data)),

@@ -34,6 +34,13 @@ const routes = [
     meta: { requiresAuth: true, }
   },
   {
+    path: '/artists/:id(\\d+)',
+    name: 'artist-detail',
+    component: () => import('@/views/ArtistDetailView.vue'),
+    props: true,
+    meta: { requiresAuth: true, }
+  },
+  {
     path: "/dashboard",
     name: "dashboard",
     component: () => import("../views/DashboardView.vue"),
@@ -52,7 +59,7 @@ const routes = [
   }, 
   {
     path: '/:pathMatch(.*)*',
-    name: "notFound",
+    name: "not-found",
     component: () => import("../views/NotFoundView.vue"),
   }
 ]

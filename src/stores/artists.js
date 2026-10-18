@@ -64,5 +64,14 @@ export const useArtistsStore = defineStore('artists', () => {
     loadPromise = null
   }
 
-  return { artists, loading, ready, error, isEmpty, load, fetchAll, findById, create, update, remove, reset }
+  async function fetchById(id) {
+    const artist = await artistService.getById(id)
+    const exists = artists.value.some((a) => a.id === id)
+    artists.value = exists
+      ? artists.value.map((a) => (a.id === id ? artist : a))
+      : [...artists.value, artist].sort(byName)
+    return artist
+  }
+
+  return { artists, loading, ready, error, isEmpty, load, fetchAll, findById, create, update, remove, reset, fetchById }
 })

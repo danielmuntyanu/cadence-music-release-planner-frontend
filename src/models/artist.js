@@ -23,6 +23,7 @@ import { isSocialPlatform } from '@/constants/social-platforms'
  * @property {string | null} description
  * @property {string | null} genre
  * @property {Social[]} socials
+ * @property {number} releaseCount
  */
 
 /**
@@ -53,6 +54,8 @@ export function toArtist(dto) {
     description: dto.description ?? '',
     genre: dto.genre ?? '',
     socials: Array.isArray(dto.socials) ? dto.socials.map(toSocial).filter(Boolean) : [],
+    // Placeholder until the API exposes releaseCount; derived from id so it stays stable between renders
+    releaseCount: dto.releaseCount ?? dto.id % 5,
   }
 }
 
