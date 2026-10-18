@@ -28,6 +28,12 @@ const routes = [
     meta: { requiresAuth: true, }
   },
   {
+    path: "/artists",
+    name: "artists",
+    component: () => import("../views/ArtistsView.vue"),
+    meta: { requiresAuth: true, }
+  },
+  {
     path: "/dashboard",
     name: "dashboard",
     component: () => import("../views/DashboardView.vue"),
@@ -43,6 +49,11 @@ const routes = [
     path: "/forbidden",
     name: "forbidden",
     component: () => import("../views/ForbiddenView.vue"),
+  }, 
+  {
+    path: '/:pathMatch(.*)*',
+    name: "notFound",
+    component: () => import("../views/NotFoundView.vue"),
   }
 ]
 

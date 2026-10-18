@@ -81,3 +81,23 @@ export function toArtistRequest(form) {
       .map((social) => ({ platform: social.platform, url: social.url.trim() })),
   }
 }
+
+let socialKey = 0
+
+// Client-only key for v-for; toArtistRequest drops it
+export const createSocialForm = (platform = 'OTHER', url = '') => ({ key: ++socialKey, platform, url })
+
+/**
+ * Form state for create/edit. Pass an artist to prefill (edit mode).
+ * @param {Artist | null} [artist]
+ */
+export function createArtistForm(artist = null) {
+  return {
+    name: artist?.name ?? '',
+    genre: artist?.genre ?? '',
+    description: artist?.description ?? '',
+    avatarUrl: artist?.avatarUrl ?? '',
+    bannerUrl: artist?.bannerUrl ?? '',
+    socials: (artist?.socials ?? []).map((s) => createSocialForm(s.platform, s.url)),
+  }
+}
