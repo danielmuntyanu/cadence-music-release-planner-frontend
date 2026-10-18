@@ -4,6 +4,8 @@ import { authService } from '@/services/auth.service'
 import { ROLES } from '@/constants/roles'
 
 export const useAuthStore = defineStore('auth', () => {
+  const artists = useAuthStore()
+  
   /** @type {import('@/models/user').User | null} */
   const user = ref(null)
   const ready = ref(false)
@@ -42,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
       await authService.logout()
     } finally {
       user.value = null
+      artists.reset()
     }
   }
 
