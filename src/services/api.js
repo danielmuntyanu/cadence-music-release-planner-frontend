@@ -40,7 +40,7 @@ function refreshSession() {
 
 function shouldRefresh(error) {
   const { response, config } = error
-  if (response?.status !== 401 || response?.status !== 403 || !config || config._retry) return false
+  if (response?.status !== 401 || !config || config._retry) return false
 
   const path = (config.url ?? '').split('?')[0]
   return !NO_REFRESH_PATHS.includes(path)

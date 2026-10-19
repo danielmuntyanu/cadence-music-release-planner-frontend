@@ -2,9 +2,10 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authService } from '@/services/auth.service'
 import { ROLES } from '@/constants/roles'
+import { useArtistsStore } from './artists'
 
 export const useAuthStore = defineStore('auth', () => {
-  const artists = useAuthStore()
+  const artists = useArtistsStore()
   
   /** @type {import('@/models/user').User | null} */
   const user = ref(null)

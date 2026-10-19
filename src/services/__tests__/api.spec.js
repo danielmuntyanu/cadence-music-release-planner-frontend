@@ -86,7 +86,8 @@ describe('api instance', () => {
       const [first, , retry] = adapter.mock.calls.map(([c]) => c)
       expect(retry.method).toBe(first.method)
       expect(retry.url).toBe(first.url)
-      expect(JSON.parse(retry.data)).toEqual({ bio: 'Hello' })
+      const retryBody = typeof retry.data === 'string' ? JSON.parse(retry.data) : retry.data
+      expect(retryBody).toEqual({ bio: 'Hello' })
     })
 
     it('retries only once: a second 401 is returned to the caller', async () => {
