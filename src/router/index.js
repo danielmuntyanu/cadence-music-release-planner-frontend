@@ -41,6 +41,19 @@ const routes = [
     meta: { requiresAuth: true, }
   },
   {
+    path: '/releases',
+    naem: 'releases',
+    component: () => import('@/views/ReleasesView.vue'),
+    meta: { requiresAuth: true, }
+  },
+  {
+    path: '/releases/:id(\\d+)',
+    naem: 'release-detail',
+    props: true,
+    component: () => import('@/views/ReleaseDetailView.vue'),
+    meta: { requiresAuth: true, }
+  },
+  {
     path: "/dashboard",
     name: "dashboard",
     component: () => import("../views/DashboardView.vue"),
