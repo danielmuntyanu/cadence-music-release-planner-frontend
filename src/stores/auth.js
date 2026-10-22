@@ -3,9 +3,11 @@ import { defineStore } from 'pinia'
 import { authService } from '@/services/auth.service'
 import { ROLES } from '@/constants/roles'
 import { useArtistsStore } from './artists'
+import { useReleasesStore } from './releases'
 
 export const useAuthStore = defineStore('auth', () => {
   const artists = useArtistsStore()
+  const releases = useReleasesStore()
   
   /** @type {import('@/models/user').User | null} */
   const user = ref(null)
@@ -46,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       user.value = null
       artists.reset()
+      releases.reset()
     }
   }
 

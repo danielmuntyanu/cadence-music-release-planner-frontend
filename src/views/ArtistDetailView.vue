@@ -8,6 +8,10 @@ import ArtistDeleteDialog from '@/components/artists/ArtistDeleteDialog.vue'
 import { useArtistsStore } from '@/stores/artists'
 import { getSocialPlatformLabel } from '@/constants/social-platforms'
 import { pluralize } from '@/utils/format'
+import { releaseService } from '@/services/release.service'
+import { getReleasePhase } from '@/constants/release-phases'
+import { getReleaseTypeLabel } from '@/constants/release-types'
+import { fromIsoDate } from '@/utils/date'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -24,6 +28,41 @@ const failed = ref(false)
 const editOpen = ref(false)
 const deleteOpen = ref(false)
 const snackbar = ref(false)
+
+const RELEASES_LIMIT = 50
+
+// Local state on purpose: the releases store holds the dashboard's filters,
+// and loading an artist's releases there would overwrite them
+const releases = ref([])
+const releasesLoading = ref(false)
+const releasesError = ref(false)
+
+let latestReleasesRequest = 0
+
+async function loadReleases() {
+  const requestId = ++latestReleasesRequest
+  releasesLoading.value = true
+  releasesError.value = false
+  try {
+    const result = await releaseService.getAll({
+      artistId: artistId.value,
+      size: RELEASES_LIMIT,
+      sort: 'releaseDate,desc',
+    })
+    // Navigating between artists quickly: only the latest response may win
+    if (requestId !== latestReleasesRequest) return
+    releases.value = result.items
+  } catch (e) {
+    if (requestId !== latestReleasesRequest) return
+    releasesError.value = true
+    console.error('### artist releases failed:\n', e)
+  } finally {
+    if (requestId === latestReleasesRequest) releasesLoading.value = false
+  }
+}
+
+const formatReleaseDate = (value) =>
+  value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(fromIsoDate(value)) : 'No date yet'
 
 const displayUrl = (url) => url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')
 
@@ -46,6 +85,7 @@ async function ensureArtist() {
 }
 
 watch(artistId, ensureArtist, { immediate: true })
+watch(artistId, loadReleases, { immediate: true })
 
 function onDeleted() {
   router.replace({ name: 'artists' })
@@ -124,10 +164,59 @@ function onDeleted() {
       <div class="grid items-start gap-6 lg:grid-cols-3">
         <v-card border flat class="lg:col-span-2">
           <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Releases</v-card-title>
-          <v-card-text class="flex flex-col items-center px-4 py-12 text-center sm:px-6">
+
+          <!-- Loading -->
+          <div v-if="releasesLoading && !releases.length" class="px-2 pb-2">
+            <v-skeleton-loader v-for="n in 3" :key="n" type="list-item-avatar-two-line" />
+          </div>
+
+          <!-- Error -->
+          <v-alert
+            v-else-if="releasesError"
+            type="error"
+            variant="tonal"
+            density="compact"
+            text="Could not load releases."
+            class="mx-4 mb-4 sm:mx-6"
+          >
+            <template #append>
+              <v-btn variant="text" size="small" @click="loadReleases">Retry</v-btn>
+            </template>
+          </v-alert>
+
+          <!-- Empty -->
+          <v-card-text v-else-if="!releases.length" class="flex flex-col items-center px-4 py-12 text-center sm:px-6">
             <v-icon icon="mdi-album" size="40" class="mb-3 text-on-surface-variant" />
-            <p class="text-on-surface-variant">Releases assigned to {{ artist.name }} will appear here.</p>
+            <p class="text-on-surface-variant">No releases with {{ artist.name }} yet.</p>
           </v-card-text>
+
+          <!-- List -->
+          <v-list v-else lines="two" class="pb-2">
+            <v-list-item v-for="release in releases" :key="release.id" class="px-4 sm:px-6">
+              <template #prepend>
+                <v-avatar rounded="lg" size="48" color="surface-variant" class="me-4">
+                  <v-img v-if="release.artworkUrl" :src="release.artworkUrl" :alt="release.name" cover />
+                  <v-icon v-else icon="mdi-album" />
+                </v-avatar>
+              </template>
+
+              <v-list-item-title class="font-medium">{{ release.name }}</v-list-item-title>
+              <v-list-item-subtitle>
+                {{ getReleaseTypeLabel(release.type) }} · {{ formatReleaseDate(release.releaseDate) }}
+              </v-list-item-subtitle>
+
+              <template #append>
+                <v-chip
+                  :color="getReleasePhase(release.phase).color"
+                  :prepend-icon="getReleasePhase(release.phase).icon"
+                  size="small"
+                  variant="tonal"
+                >
+                  {{ getReleasePhase(release.phase).label }}
+                </v-chip>
+              </template>
+            </v-list-item>
+          </v-list>
         </v-card>
 
         <div class="flex flex-col gap-6">
