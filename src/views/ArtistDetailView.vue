@@ -22,6 +22,8 @@ const artistsStore = useArtistsStore()
 
 const artistId = computed(() => Number(props.id))
 const artist = computed(() => artistsStore.findById(artistId.value))
+// Opens the Releases page filtered by this artist (the filter is read from the URL)
+const allReleasesRoute = computed(() => ({ name: 'releases', query: { artistId: String(artistId.value) } }))
 
 const notFound = ref(false)
 const failed = ref(false)
@@ -163,7 +165,18 @@ function onDeleted() {
 
       <div class="grid items-start gap-6 lg:grid-cols-3">
         <v-card border flat class="lg:col-span-2">
-          <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Releases</v-card-title>
+          <v-card-title class="flex items-center justify-between gap-2 px-4 pt-4 text-base font-medium sm:px-6">
+            Releases
+            <v-btn
+              v-if="artist.releaseCount > 0"
+              :to="allReleasesRoute"
+              variant="text"
+              size="small"
+              append-icon="mdi-arrow-right"
+            >
+              Show all
+            </v-btn>
+          </v-card-title>
 
           <!-- Loading -->
           <div v-if="releasesLoading && !releases.length" class="px-2 pb-2">

@@ -9,6 +9,20 @@ import ReleaseDeleteDialog from '@/components/releases/ReleaseDeleteDialog.vue'
 import { useReleasesStore } from '@/stores/releases'
 import { getReleasePhase } from '@/constants/release-phases'
 import { pluralize } from '@/utils/format'
+import { useRoute, useRouter } from 'vue-router'
+import ReleaseFiltersBar from '@/components/releases/ReleaseFiltersBar.vue'
+import { RELEASE_ROUTE_KEYS, fromReleaseRouteQuery, toReleaseRouteQuery } from '@/models/release'
+
+const route = useRoute()
+const router = useRouter()
+
+const currentQuery = () =>
+  toReleaseRouteQuery({ filters: releasesStore.filters, sort: releasesStore.sort, page: releasesStore.page.number })
+
+// Compared in normalized form: the router may hold "PROMO" where the store has ["PROMO"]
+const normalizedRouteQuery = () => toReleaseRouteQuery(fromReleaseRouteQuery(route.query))
+const sameQuery = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+const hasRouteState = (query) => RELEASE_ROUTE_KEYS.some((key) => key in query)
 
 const VIEW_STORAGE_KEY = 'cadence.releases.view'
 
@@ -67,7 +81,28 @@ async function onChangePhase(release, phase) {
   }
 }
 
-onMounted(() => releasesStore.fetchPage())
+onMounted(() => {
+  if (hasRouteState(route.query)) {
+    // A shared link or a reload: the URL wins
+    releasesStore.hydrate(fromReleaseRouteQuery(route.query))
+  } else {
+    // Plain /releases (e.g. the header link): keep the last filters and show them in the URL
+    releasesStore.fetchPage()
+    router.replace({ query: currentQuery() })
+  }
+})
+
+// URL -> store: back/forward or a link with filters while already on the page
+watch(() => route.query, (query) => {
+  if (!hasRouteState(query)) return router.replace({ query: currentQuery() })
+  const state = fromReleaseRouteQuery(query)
+  if (!sameQuery(toReleaseRouteQuery(state), currentQuery())) releasesStore.hydrate(state)
+})
+
+// Store -> URL: replace, so filter clicks do not pile up in browser history
+watch(currentQuery, (query) => {
+  if (!sameQuery(query, normalizedRouteQuery())) router.replace({ query })
+})
 </script>
 
 <template>
@@ -76,7 +111,8 @@ onMounted(() => releasesStore.fetchPage())
       <div>
         <h1 class="mb-1 text-2xl font-medium text-on-surface">Releases</h1>
         <p class="text-on-surface-variant">
-          {{ total ? `${pluralize(total, 'release')} in your catalog` : 'Everything you are planning and have released' }}
+            <template v-if="releasesStore.hasFilters">{{ pluralize(total, 'release') }} found</template>
+            <template v-else>{{ total ? `${pluralize(total, 'release')} in your catalog` : 'Everything you are planning and have released' }}</template>
         </p>
       </div>
 
@@ -113,14 +149,7 @@ onMounted(() => releasesStore.fetchPage())
     <ReleasesEmptyState v-else-if="releasesStore.isEmpty" @create="createOpen = true" />
 
     <template v-else-if="releasesStore.ready">
-      <!-- Filters (CD-80) go on the left of this toolbar -->
-      <div class="mb-4 flex items-center gap-3">
-        <v-spacer />
-        <v-btn-toggle v-model="view" mandatory divided density="compact" variant="outlined">
-          <v-btn value="grid" icon="mdi-view-grid-outline" aria-label="Grid view" />
-          <v-btn value="list" icon="mdi-view-list-outline" aria-label="List view" />
-        </v-btn-toggle>
-      </div>
+      <ReleaseFiltersBar v-model:view="view" />
 
       <!-- No results for the current filters -->
       <div v-if="showNoResults" class="py-16 text-center">

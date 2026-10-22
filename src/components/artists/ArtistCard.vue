@@ -16,6 +16,7 @@ defineEmits(['edit', 'delete'])
 const MAX_VISIBLE_SOCIALS = 3
 
 const detailRoute = computed(() => ({ name: 'artist-detail', params: { id: props.artist.id } }))
+const releasesRoute = computed(() => ({ name: 'releases', query: { artistId: String(props.artist.id) } }))
 const visibleSocials = computed(() => props.artist.socials.slice(0, MAX_VISIBLE_SOCIALS))
 const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.length - MAX_VISIBLE_SOCIALS))
 </script>
@@ -82,7 +83,14 @@ const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.lengt
 
     <div class="flex items-center gap-2 px-4 py-3 text-sm text-on-surface-variant">
       <v-icon icon="mdi-album" size="18" />
-      {{ pluralize(artist.releaseCount, 'release') }}
+      <RouterLink
+        v-if="artist.releaseCount > 0"
+        :to="releasesRoute"
+        class="hover:text-on-surface hover:underline focus-visible:underline"
+      >
+        {{ pluralize(artist.releaseCount, 'release') }}
+      </RouterLink>
+      <span v-else>{{ pluralize(artist.releaseCount, 'release') }}</span>
     </div>
   </v-card>
 </template>
