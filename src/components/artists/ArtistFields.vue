@@ -1,7 +1,9 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { SOCIAL_PLATFORMS } from '@/constants/social-platforms'
 import { createSocialForm } from '@/models/artist'
+
+const nameField = ref(null)
 
 const artist = defineModel({ type: Object, required: true })
 
@@ -29,12 +31,17 @@ function addSocial() {
 function removeSocial(key) {
   artist.value.socials = artist.value.socials.filter((s) => s.key !== key)
 }
+
+defineExpose({
+  focus: () => nameField.value?.focus(),
+})
 </script>
 
 <template>
   <div class="flex flex-col gap-4">
     <div class="grid gap-x-4 gap-y-1 sm:grid-cols-2">
       <v-text-field
+        ref="nameField"
         v-model="artist.name"
         label="Name"
         :rules="rules.name"

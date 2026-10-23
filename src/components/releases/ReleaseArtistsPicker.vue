@@ -129,7 +129,7 @@ onMounted(() => artistsStore.load())
       <template #item="{ props: itemProps, item }">
         <v-list-item v-bind="itemProps">
           <template #prepend>
-            <ArtistAvatar :name="item.raw.name" :src="item.raw.avatarUrl" :size="28" class="me-3" />
+            <ArtistAvatar :name="item.name" :src="item.avatarUrl" :size="28" class="me-3" />
           </template>
         </v-list-item>
       </template>
