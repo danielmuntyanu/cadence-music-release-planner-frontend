@@ -12,6 +12,7 @@ import { releaseService } from '@/services/release.service'
 import { getReleasePhase } from '@/constants/release-phases'
 import { getReleaseTypeLabel } from '@/constants/release-types'
 import { fromIsoDate } from '@/utils/date'
+import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -38,6 +39,8 @@ const RELEASES_LIMIT = 50
 const releases = ref([])
 const releasesLoading = ref(false)
 const releasesError = ref(false)
+const createReleaseOpen = ref(false)
+
 
 let latestReleasesRequest = 0
 
@@ -84,6 +87,11 @@ async function ensureArtist() {
       console.error('### artists/getById failed:\n', e)
     }
   }
+}
+
+function onReleaseCreated() {
+  loadReleases()
+  artistsStore.fetchById(artistId.value) // refreshes releaseCount in the header
 }
 
 watch(artistId, ensureArtist, { immediate: true })
@@ -176,6 +184,7 @@ function onDeleted() {
             >
               Show all
             </v-btn>
+            <v-btn variant="tonal" size="small" prepend-icon="mdi-plus" @click="createReleaseOpen = true">New release</v-btn>
           </v-card-title>
 
           <!-- Loading -->
@@ -265,6 +274,7 @@ function onDeleted() {
 
     <ArtistEditDialog v-model="editOpen" :artist="artist" @updated="snackbar = true" />
     <ArtistDeleteDialog v-model="deleteOpen" :artist="artist" @deleted="onDeleted" />
+    <ReleaseCreateDialog v-model="createReleaseOpen" :preset="{ artistIds: [artistId] }" @created="onReleaseCreated" />
     <v-snackbar v-model="snackbar" color="success" timeout="2500">Changes saved</v-snackbar>
   </PageContainer>
 </template>

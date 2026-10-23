@@ -9,6 +9,8 @@ import ArtistCreatePanel from '@/components/artists/ArtistCreatePanel.vue'
 import { useArtistsStore } from '@/stores/artists'
 import ArtistEditDialog from '@/components/artists/ArtistEditDialog.vue'
 import ArtistDeleteDialog from '@/components/artists/ArtistDeleteDialog.vue'
+import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
+
 
 const PAGE_SIZE = 12 // divisible by 2, 3 and 4 so every grid row is full
 const VIEW_STORAGE_KEY = 'cadence.artists.view'
@@ -27,6 +29,10 @@ const snackbar = ref(false)
 const total = computed(() => artistsStore.artists.length)
 const showSkeleton = computed(() => artistsStore.loading && !artistsStore.ready)
 const showEmpty = computed(() => artistsStore.isEmpty && !creating.value)
+
+const createReleaseOpen = ref(false)
+const createReleaseFor = ref(null)
+
 
 const filtered = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -58,6 +64,16 @@ function openDelete(artist) {
 function notify(text) {
   snackbarText.value = text
   snackbar.value = true
+}
+
+function openCreateRelease(artist) {
+  createReleaseFor.value = artist
+  createReleaseOpen.value = true
+}
+
+function onReleaseCreated() {
+  artistsStore.fetchById(createReleaseFor.value.id) // refreshes the card's release count
+  notify('Release created')
 }
 
 watch(search, () => { page.value = 1 })
@@ -178,6 +194,7 @@ onMounted(() => artistsStore.load())
                 :highlighted="artist.id === highlightedId"
                 @edit="openEdit"
                 @delete="openDelete"
+                @create-release="openCreateRelease"
             />
         </div>
         <ArtistList
@@ -203,6 +220,8 @@ onMounted(() => artistsStore.load())
     
     <ArtistEditDialog v-model="editOpen" :artist="editTarget" @updated="notify('Changes saved')" />
     <ArtistDeleteDialog v-model="deleteOpen" :artist="deleteTarget" @deleted="notify('Artist deleted')" />
+    <ReleaseCreateDialog v-model="createReleaseOpen"
+      :preset="{ artistIds: createReleaseFor ? [createReleaseFor.id] : [] }" @created="onReleaseCreated" />
     <v-snackbar v-model="snackbar" color="success" timeout="2500">{{ snackbarText }}</v-snackbar>
   </PageContainer>
 </template>

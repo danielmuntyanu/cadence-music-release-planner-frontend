@@ -84,7 +84,6 @@ export function createReleaseForm(release = null) {
     name: release?.name ?? '',
     type: release?.type ?? DEFAULT_RELEASE_TYPE,
     phase: release?.phase ?? DEFAULT_RELEASE_PHASE,
-    artworkUrl: release?.artworkUrl ?? '',
     notes: release?.notes ?? '',
     primaryGenre: release?.primaryGenre ?? null,
     secondaryGenre: release?.secondaryGenre ?? null,
@@ -105,7 +104,6 @@ export function toReleaseRequest(form) {
   return {
     name: trimmed(form.name),
     type: form.type ?? null,
-    artworkUrl: trimmed(form.artworkUrl),
     notes: trimmed(form.notes),
     primaryGenre: form.primaryGenre ?? null,
     secondaryGenre: form.secondaryGenre ?? null,

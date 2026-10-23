@@ -82,12 +82,12 @@ export const useReleasesStore = defineStore('releases', () => {
     releases.value = releases.value.map((release) => (release.id === updated.id ? updated : release))
   }
 
-  async function create(payload) {
-    const created = await releaseService.create(payload)
-    // The server decides where it lands under the current sort and filters
-    await fetchPage(0)
-    return created
-  }
+//   async function create(payload) {
+//     const created = await releaseService.create(payload)
+//     // The server decides where it lands under the current sort and filters
+//     await fetchPage(0)
+//     return created
+//   }
 
   async function update(id, payload) {
     const updated = await releaseService.update(id, payload)
@@ -142,7 +142,7 @@ export const useReleasesStore = defineStore('releases', () => {
     setSort,
     setPage,
     findById,
-    create,
+    // create,
     update,
     updatePhase,
     remove,

@@ -11,7 +11,7 @@ const props = defineProps({
   highlighted: { type: Boolean, default: false },
 })
 
-defineEmits(['edit', 'delete'])
+defineEmits(['edit', 'delete', 'create-release'])
 
 const MAX_VISIBLE_SOCIALS = 3
 
@@ -91,6 +91,14 @@ const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.lengt
         {{ pluralize(artist.releaseCount, 'release') }}
       </RouterLink>
       <span v-else>{{ pluralize(artist.releaseCount, 'release') }}</span>
+      <v-spacer />
+      <v-btn
+        icon="mdi-plus"
+        size="x-small"
+        variant="tonal"
+        :aria-label="`New release with ${artist.name}`"
+        @click="$emit('create-release', artist)"
+      />
     </div>
   </v-card>
 </template>

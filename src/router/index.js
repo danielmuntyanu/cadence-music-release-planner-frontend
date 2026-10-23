@@ -42,13 +42,13 @@ const routes = [
   },
   {
     path: '/releases',
-    naem: 'releases',
+    name: 'releases',
     component: () => import('@/views/ReleasesView.vue'),
     meta: { requiresAuth: true, }
   },
   {
     path: '/releases/:id(\\d+)',
-    naem: 'release-detail',
+    name: 'release-detail',
     props: true,
     component: () => import('@/views/ReleaseDetailView.vue'),
     meta: { requiresAuth: true, }

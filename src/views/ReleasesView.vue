@@ -12,6 +12,7 @@ import { pluralize } from '@/utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import ReleaseFiltersBar from '@/components/releases/ReleaseFiltersBar.vue'
 import { RELEASE_ROUTE_KEYS, fromReleaseRouteQuery, toReleaseRouteQuery } from '@/models/release'
+import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,11 +35,12 @@ const createOpen = ref(false)
 const deleteOpen = ref(false)
 const deleteTarget = ref(null)
 const phaseLoadingId = ref(null)
-const snackbar = ref({ show: false, text: '', color: 'success' })
+const snackbar = ref({ show: false, text: '', color: 'success', to: null })
 
 const total = computed(() => releasesStore.page.totalElements)
 const showSkeleton = computed(() => releasesStore.loading && !releasesStore.ready)
 const showNoResults = computed(() => releasesStore.ready && total.value === 0 && releasesStore.hasFilters)
+
 
 // v-pagination is 1-based, Spring pages are 0-based
 const currentPage = computed({
@@ -59,8 +61,8 @@ function readView() {
   }
 }
 
-function notify(text, color = 'success') {
-  snackbar.value = { show: true, text, color }
+function notify(text, color = 'success', to = null) {
+  snackbar.value = { show: true, text, color, to }
 }
 
 function openDelete(release) {
@@ -79,6 +81,11 @@ async function onChangePhase(release, phase) {
   } finally {
     phaseLoadingId.value = null
   }
+}
+
+function onReleaseCreated(release) {
+  releasesStore.fetchPage(0)
+  notify('Release created', 'success', { name: 'release-detail', params: { id: release.id } })
 }
 
 onMounted(() => {
@@ -191,6 +198,12 @@ watch(currentQuery, (query) => {
     </template>
 
     <ReleaseDeleteDialog v-model="deleteOpen" :release="deleteTarget" @deleted="notify('Release deleted')" />
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500">{{ snackbar.text }}</v-snackbar>
+    <ReleaseCreateDialog v-model="createOpen" @created="onReleaseCreated" />
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000">
+      {{ snackbar.text }}
+      <template #actions>
+        <v-btn v-if="snackbar.to" :to="snackbar.to" variant="text">Open</v-btn>
+      </template>
+    </v-snackbar>
   </PageContainer>
 </template>
