@@ -66,6 +66,11 @@ export const useAuthStore = defineStore('auth', () => {
     return Array.isArray(required) && required.some((role) => hasRole(role))
   }
 
-  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole, register }
+  /** Replaces the current user with fresh data from a response (e.g. after an avatar change) */
+  function setUser(value) {
+    user.value = value
+  }
+
+  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole, register, setUser }
 
 })

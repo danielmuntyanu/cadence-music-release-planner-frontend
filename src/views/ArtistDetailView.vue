@@ -13,6 +13,7 @@ import { getReleasePhase } from '@/constants/release-phases'
 import { getReleaseTypeLabel } from '@/constants/release-types'
 import { fromIsoDate } from '@/utils/date'
 import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
+import ArtistBanner from '@/components/artists/ArtistBanner.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -139,8 +140,7 @@ function onDeleted() {
     <div v-else class="flex flex-col gap-6">
       <v-card border flat class="overflow-hidden">
         <div class="h-40 sm:h-56">
-          <v-img v-if="artist.bannerUrl" :src="artist.bannerUrl" cover class="h-full" />
-          <div v-else class="artist-banner h-full" />
+          <ArtistBanner :src="artist.bannerUrl" :alt="`${artist.name} banner`" />
         </div>
 
         <div class="relative -mt-14 flex flex-col gap-4 px-4 pb-6 sm:flex-row sm:items-end sm:px-6">
@@ -278,12 +278,3 @@ function onDeleted() {
     <v-snackbar v-model="snackbar" color="success" timeout="2500">Changes saved</v-snackbar>
   </PageContainer>
 </template>
-
-<style scoped>
-.artist-banner {
-  background:
-    radial-gradient(circle at 15% 30%, rgba(var(--v-theme-primary), 0.45), transparent 60%),
-    radial-gradient(circle at 85% 0%, rgba(var(--v-theme-secondary), 0.35), transparent 55%),
-    rgba(var(--v-theme-on-surface), 0.04);
-}
-</style>

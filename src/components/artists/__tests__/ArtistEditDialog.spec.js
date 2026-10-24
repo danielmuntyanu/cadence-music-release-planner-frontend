@@ -6,7 +6,7 @@ import { findButton, findField, mountWithPlugins } from '@/test-utils/mount'
 import { makeArtist } from '@/test-utils/fixtures/artists'
 
 vi.mock('@/services/artist.service', () => ({
-  artistService: { update: vi.fn() },
+  artistService: { update: vi.fn(), uploadImage: vi.fn(), removeImage: vi.fn() },
 }))
 
 /**
@@ -78,5 +78,18 @@ describe('ArtistEditDialog', () => {
 
     expect(dialog.text()).toContain('This artist no longer exists.')
     expect(wrapper.emitted('updated')).toBeUndefined()
+  })
+
+  it('never sends image fields when saving, even for an artist with uploaded images', async () => {
+    const artist = makeArtist({ name: 'Nova', avatarUrl: 'https://signed.test/a.jpg?X-Amz-Signature=abc' })
+    artistService.update.mockResolvedValue({ ...artist, name: 'Nova Remix' })
+    const { dialog } = await openDialog(artist)
+    await findField(dialog, 'Name').find('input').setValue('Nova Remix')
+
+    await submit(dialog)
+
+    const [, payload] = artistService.update.mock.calls[0]
+    expect(payload).not.toHaveProperty('avatarUrl')
+    expect(payload).not.toHaveProperty('bannerUrl')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createArtistForm, toArtist, toArtistRequest } from '@/models/artist'
+import { createArtistForm, toArtist, toArtistRequest, toArtistUpdateRequest } from '@/models/artist'
 
 describe('toArtist', () => {
   it('returns null for non-object input', () => {
@@ -110,5 +110,22 @@ describe('createArtistForm', () => {
     form.socials[0].url = 'https://changed.test'
 
     expect(artist.socials[0].url).toBe('https://a.test')
+  })
+})
+
+describe('toArtistUpdateRequest', () => {
+  it('leaves the image fields out, so a signed URL is never sent back as a link', () => {
+    const form = createArtistForm({
+      name: 'Nova',
+      avatarUrl: 'https://storage.test/avatar.jpg?X-Amz-Signature=abc',
+      bannerUrl: 'https://storage.test/banner.jpg?X-Amz-Signature=def',
+      socials: [],
+    })
+
+    const request = toArtistUpdateRequest(form)
+
+    expect(request).not.toHaveProperty('avatarUrl')
+    expect(request).not.toHaveProperty('bannerUrl')
+    expect(request.name).toBe('Nova')
   })
 })

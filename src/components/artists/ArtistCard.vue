@@ -5,6 +5,7 @@ import ArtistBio from './ArtistBio.vue'
 import ArtistActionsMenu from './ArtistActionsMenu.vue'
 import { getSocialPlatformLabel } from '@/constants/social-platforms'
 import { pluralize } from '@/utils/format'
+import ArtistBanner from './ArtistBanner.vue'
 
 const props = defineProps({
   artist: { type: Object, required: true },
@@ -28,10 +29,8 @@ const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.lengt
     class="relative overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-xl"
     :class="highlighted && 'ring-2 ring-[rgb(var(--v-theme-primary))]'"
   >
-    <!-- Banner and avatar duplicate the name link, so they are hidden from keyboard and screen readers -->
     <RouterLink :to="detailRoute" class="block h-24" tabindex="-1" :aria-label="`Open ${artist.name}`">
-      <v-img v-if="artist.bannerUrl" :src="artist.bannerUrl" cover class="h-full" />
-      <div v-else class="artist-banner h-full" />
+      <ArtistBanner :src="artist.bannerUrl" />
     </RouterLink>
 
     <div class="absolute right-2 top-2">
@@ -102,12 +101,3 @@ const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.lengt
     </div>
   </v-card>
 </template>
-
-<style scoped>
-.artist-banner {
-  background:
-    radial-gradient(circle at 15% 30%, rgba(var(--v-theme-primary), 0.45), transparent 60%),
-    radial-gradient(circle at 85% 0%, rgba(var(--v-theme-secondary), 0.35), transparent 55%),
-    rgba(var(--v-theme-on-surface), 0.04);
-}
-</style>

@@ -36,8 +36,22 @@ export const useArtistsStore = defineStore('artists', () => {
     }
   }
 
+  async function fetchById(id) {
+    const artist = await artistService.getById(id)
+    const exists = artists.value.some((a) => a.id === id)
+    artists.value = exists
+      ? artists.value.map((a) => (a.id === id ? artist : a))
+      : [...artists.value, artist].sort(byName)
+    return artist
+  }
+
   function findById(id) {
     return artists.value.find((artist) => artist.id === id) ?? null
+  }
+
+  function replace(updated) {
+    artists.value = artists.value.map((artist) => (artist.id === updated.id ? updated : artist)).sort(byName)
+    return updated
   }
 
   async function create(payload) {
@@ -47,9 +61,15 @@ export const useArtistsStore = defineStore('artists', () => {
   }
 
   async function update(id, payload) {
-    const updated = await artistService.update(id, payload)
-    artists.value = artists.value.map((artist) => (artist.id === id ? updated : artist)).sort(byName)
-    return updated
+    return replace(await artistService.update(id, payload))
+  }
+
+  async function uploadImage(id, slot, file, onProgress) {
+    return replace(await artistService.uploadImage(id, slot, file, onProgress))
+  }
+
+  async function removeImage(id, slot) {
+    return replace(await artistService.removeImage(id, slot))
   }
 
   async function remove(id) {
@@ -64,14 +84,5 @@ export const useArtistsStore = defineStore('artists', () => {
     loadPromise = null
   }
 
-  async function fetchById(id) {
-    const artist = await artistService.getById(id)
-    const exists = artists.value.some((a) => a.id === id)
-    artists.value = exists
-      ? artists.value.map((a) => (a.id === id ? artist : a))
-      : [...artists.value, artist].sort(byName)
-    return artist
-  }
-
-  return { artists, loading, ready, error, isEmpty, load, fetchAll, findById, create, update, remove, reset, fetchById }
+  return { artists, loading, ready, error, isEmpty, load, fetchAll, fetchById, findById, create, update, uploadImage, removeImage, remove, reset }
 })

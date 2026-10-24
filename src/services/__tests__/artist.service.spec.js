@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '@/services/api'
 import { artistService } from '@/services/artist.service'
+import { uploadService } from '@/services/upload.service'
+
 
 vi.mock('@/services/api', () => ({
   default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}))
+
+vi.mock('@/services/upload.service', () => ({
+  uploadService: { putImage: vi.fn() },
 }))
 
 const ARTIST_DTO = { id: 7, name: 'Nova', genre: 'Synthwave', socials: [] }
@@ -93,5 +99,25 @@ describe('artistService', () => {
     api[httpMethod].mockRejectedValue(error)
 
     await expect(artistService[method](...args)).rejects.toBe(error)
+  })
+
+  it('uploadImage puts the file to the slot endpoint and maps the artist', async () => {
+    const file = new File(['x'], 'a.png', { type: 'image/png' })
+    const onProgress = vi.fn()
+    uploadService.putImage.mockResolvedValue({ ...ARTIST_DTO, avatarUrl: 'https://signed.test/a.jpg' })
+
+    const artist = await artistService.uploadImage(7, 'avatar', file, onProgress)
+
+    expect(uploadService.putImage).toHaveBeenCalledWith('/artists/7/avatar', file, onProgress)
+    expect(artist.avatarUrl).toBe('https://signed.test/a.jpg')
+  })
+
+  it('removeImage deletes the slot and maps the artist', async () => {
+    api.delete.mockResolvedValue({ data: { ...ARTIST_DTO, bannerUrl: null } })
+
+    const artist = await artistService.removeImage(7, 'banner')
+
+    expect(api.delete).toHaveBeenCalledWith('/artists/7/banner')
+    expect(artist.bannerUrl).toBeNull()
   })
 })

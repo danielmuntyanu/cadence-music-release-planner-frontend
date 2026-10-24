@@ -3,9 +3,10 @@ import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ArtistAvatar from './ArtistAvatar.vue'
 import ArtistFields from './ArtistFields.vue'
+import ArtistImagesSection from './ArtistImagesSection.vue'
 import { useArtistsStore } from '@/stores/artists'
 import { useSubmit } from '@/composables/useSubmit'
-import { createArtistForm, toArtistRequest } from '@/models/artist'
+import { createArtistForm, toArtistUpdateRequest } from '@/models/artist'
 
 const open = defineModel({ type: Boolean, default: false })
 
@@ -25,10 +26,14 @@ const { loading, error, submit } = useSubmit({
 })
 
 const form = ref(null)
+const fields = ref(null)
 const draft = ref(createArtistForm())
 const initialSnapshot = ref('')
 
-const snapshot = (value) => JSON.stringify(toArtistRequest(value))
+// Images are saved right away by ImageInput, so the header follows the store, not the draft
+const current = computed(() => (props.artist ? artistsStore.findById(props.artist.id) ?? props.artist : null))
+
+const snapshot = (value) => JSON.stringify(toArtistUpdateRequest(value))
 const dirty = computed(() => snapshot(draft.value) !== initialSnapshot.value)
 
 // Fresh draft on every open, so a cancelled edit never leaks into the next one
@@ -45,7 +50,7 @@ async function onSubmit() {
 
   let updated = null
   const ok = await submit(async () => {
-    updated = await artistsStore.update(props.artist.id, toArtistRequest(draft.value))
+    updated = await artistsStore.update(props.artist.id, toArtistUpdateRequest(draft.value))
   })
 
   if (ok) {
@@ -56,11 +61,18 @@ async function onSubmit() {
 </script>
 
 <template>
-  <v-dialog v-model="open" :fullscreen="xs" max-width="720" scrollable :persistent="dirty">
+  <v-dialog
+    v-model="open"
+    :fullscreen="xs"
+    max-width="720"
+    scrollable
+    :persistent="dirty"
+    @after-enter="fields?.focus()"
+  >
     <v-card v-if="artist">
       <v-form ref="form" class="flex max-h-full flex-col" @submit.prevent="onSubmit">
         <div class="flex items-center gap-4 px-4 py-4 sm:px-6">
-          <ArtistAvatar :name="draft.name" :src="draft.avatarUrl" :size="56" />
+          <ArtistAvatar :name="draft.name" :src="current?.avatarUrl" :size="56" />
           <div class="min-w-0 flex-1">
             <p class="text-xs uppercase tracking-wider text-on-surface-variant">Edit artist</p>
             <h2 class="truncate text-lg font-medium text-on-surface">{{ draft.name.trim() || 'Untitled artist' }}</h2>
@@ -70,9 +82,11 @@ async function onSubmit() {
 
         <v-divider />
 
-        <v-card-text class="p-4 sm:p-6">
-          <ArtistFields v-model="draft" />
-          <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-4" :text="error" />
+        <v-card-text class="flex flex-col gap-6 p-4 sm:p-6">
+          <ArtistImagesSection :artist-id="artist.id" />
+          <v-divider />
+          <ArtistFields ref="fields" v-model="draft" :with-image-links="false" />
+          <v-alert v-if="error" type="error" variant="tonal" density="compact" :text="error" />
         </v-card-text>
 
         <v-divider />

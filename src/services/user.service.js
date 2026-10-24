@@ -1,4 +1,6 @@
 import api from '@/services/api'
+import { uploadService } from '@/services/upload.service'
+import { toUser } from '@/models/user'
 
 export const userService = {
   updateProfile: (payload) =>
@@ -7,13 +9,15 @@ export const userService = {
   changePassword: ({ currentPassword, newPassword }) =>
     api.put('/users/me/password', { currentPassword, newPassword }),
 
-  uploadAvatar: (file) => {
-    const body = new FormData()
-    body.append('file', file)
-    return api.post('/users/me/avatar', body)
-  },
+  uploadAvatar: (file, onProgress) =>
+    uploadService.putImage('/users/me/avatar', file, onProgress).then(toUser),
 
-  removeAvatar: () => api.delete('/users/me/avatar'),
+  // "" removes the avatar; a URL replaces an uploaded file
+  setAvatarLink: (url) =>
+    api.patch('/users/me', { avatarUrl: url }).then(({ data }) => toUser(data)),
+
+  removeAvatar: () =>
+    api.delete('/users/me/avatar').then(({ data }) => toUser(data)),
 
   deleteAccount: () => api.delete('/users/me'),
 }

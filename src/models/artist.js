@@ -103,3 +103,14 @@ export function createArtistForm(artist = null) {
     socials: (artist?.socials ?? []).map((s) => createSocialForm(s.platform, s.url)),
   }
 }
+
+/**
+ * PATCH body for the edit dialog. Image fields are left out on purpose: the form holds
+ * the displayed URL, which for uploaded files is a short-lived signed URL. Sending it back
+ * would replace the stored file with a link that expires. Images change through ImageInput.
+ * @param {ReturnType<typeof createArtistForm>} form
+ */
+export function toArtistUpdateRequest(form) {
+  const { avatarUrl, bannerUrl, ...rest } = toArtistRequest(form)
+  return rest
+}

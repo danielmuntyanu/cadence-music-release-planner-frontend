@@ -4,7 +4,15 @@ import { artistService } from '@/services/artist.service'
 import { makeArtist } from '@/test-utils/fixtures/artists'
 
 vi.mock('@/services/artist.service', () => ({
-  artistService: { getAll: vi.fn(), getById: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  artistService: {
+    getAll: vi.fn(),
+    getById: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    uploadImage: vi.fn(),
+    removeImage: vi.fn(),
+  },
 }))
 
 describe('artists store', () => {
@@ -107,5 +115,32 @@ describe('artists store', () => {
 
     await store.load()
     expect(artistService.getAll).toHaveBeenCalledTimes(2)
+  })
+
+  it('uploadImage replaces the artist with the server version', async () => {
+    const artist = makeArtist({ name: 'Ada' })
+    artistService.getAll.mockResolvedValue([artist])
+    artistService.uploadImage.mockResolvedValue({ ...artist, avatarUrl: 'https://signed.test/a.jpg' })
+    const store = useArtistsStore()
+    await store.load()
+    const file = new File(['x'], 'a.png', { type: 'image/png' })
+    const onProgress = vi.fn()
+
+    await store.uploadImage(artist.id, 'avatar', file, onProgress)
+
+    expect(artistService.uploadImage).toHaveBeenCalledWith(artist.id, 'avatar', file, onProgress)
+    expect(store.findById(artist.id).avatarUrl).toBe('https://signed.test/a.jpg')
+  })
+
+  it('removeImage replaces the artist with the server version', async () => {
+    const artist = makeArtist({ name: 'Ada', bannerUrl: 'https://signed.test/b.jpg' })
+    artistService.getAll.mockResolvedValue([artist])
+    artistService.removeImage.mockResolvedValue({ ...artist, bannerUrl: null })
+    const store = useArtistsStore()
+    await store.load()
+
+    await store.removeImage(artist.id, 'banner')
+
+    expect(store.findById(artist.id).bannerUrl).toBeNull()
   })
 })

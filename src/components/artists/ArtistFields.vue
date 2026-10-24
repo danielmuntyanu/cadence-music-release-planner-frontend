@@ -3,6 +3,11 @@ import { computed, ref } from 'vue'
 import { SOCIAL_PLATFORMS } from '@/constants/social-platforms'
 import { createSocialForm } from '@/models/artist'
 
+defineProps({
+  // Edit mode manages images with ImageInput instead of link fields
+  withImageLinks: { type: Boolean, default: true },
+})
+
 const nameField = ref(null)
 
 const artist = defineModel({ type: Object, required: true })
@@ -65,20 +70,22 @@ defineExpose({
         auto-grow
         class="sm:col-span-2"
       />
-      <v-text-field
-        v-model="artist.avatarUrl"
-        label="Avatar URL"
-        type="url"
-        :rules="rules.url"
-        prepend-inner-icon="mdi-image-outline"
-      />
-      <v-text-field
-        v-model="artist.bannerUrl"
-        label="Banner URL"
-        type="url"
-        :rules="rules.url"
-        prepend-inner-icon="mdi-panorama-variant-outline"
-      />
+      <template v-if="withImageLinks">
+        <v-text-field
+          v-model="artist.avatarUrl"
+          label="Avatar URL"
+          type="url"
+          :rules="rules.url"
+          prepend-inner-icon="mdi-image-outline"
+        />
+        <v-text-field
+          v-model="artist.bannerUrl"
+          label="Banner URL"
+          type="url"
+          :rules="rules.url"
+          prepend-inner-icon="mdi-panorama-variant-outline"
+        />
+      </template>
     </div>
 
     <section>
