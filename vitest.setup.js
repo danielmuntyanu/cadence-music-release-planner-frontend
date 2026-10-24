@@ -39,3 +39,7 @@ window.scrollTo = () => {}
 
 // Unmounting removes teleported overlay content from document.body between tests
 enableAutoUnmount(afterEach)
+
+// jsdom has no object URLs; previews only need a stable string
+URL.createObjectURL ??= () => 'blob:preview'
+URL.revokeObjectURL ??= () => {}
