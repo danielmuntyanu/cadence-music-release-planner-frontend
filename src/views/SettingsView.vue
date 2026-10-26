@@ -1,10 +1,10 @@
 <script setup>
 import PageContainer from '@/components/PageContainer.vue'
 import SettingsSection from '@/components/settings/SettingsSection.vue'
-import AvatarUpload from '@/components/settings/AvatarUpload.vue'
 import ProfileForm from '@/components/settings/ProfileForm.vue'
 import PasswordForm from '@/components/settings/PasswordForm.vue'
 import DeleteAccount from '@/components/settings/DeleteAccount.vue'
+import UploadAvatar from '@/components/settings/UploadAvatar.vue'
 </script>
 
 <template>
@@ -15,7 +15,7 @@ import DeleteAccount from '@/components/settings/DeleteAccount.vue'
 
       <div class="flex flex-col gap-6">
         <SettingsSection title="Avatar" description="Shown next to your name across the app.">
-          <AvatarUpload />
+          <UploadAvatar />
         </SettingsSection>
 
         <SettingsSection title="Profile" description="Your public details and sign-in email.">
