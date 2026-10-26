@@ -24,7 +24,7 @@ const fallbackStyle = computed(() => ({
 
 <template>
   <div class="aspect-square w-full overflow-hidden">
-    <v-img v-if="src && !failed" :src="src" :alt="name" cover class="h-full w-full" @error="failed = true" />
+    <v-img v-if="src && !failed" :src="src" :alt="name" cover class="h-full w-full border border-border-gray rounded-md" @error="failed = true" />
     <div v-else class="flex h-full w-full items-center justify-center" :style="fallbackStyle">
       <v-icon :icon="icon" :size="iconSize" class="text-white/80" />
     </div>

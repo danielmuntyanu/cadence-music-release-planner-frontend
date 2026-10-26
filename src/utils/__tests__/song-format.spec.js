@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, formatIsrc } from '@/utils/song-format'
+import { formatDuration, formatIsrc, parseDuration } from '@/utils/song-format'
 
 describe('formatDuration', () => {
   it.each([
@@ -25,5 +25,27 @@ describe('formatIsrc', () => {
   it('leaves unexpected values untouched', () => {
     expect(formatIsrc('SHORT')).toBe('SHORT')
     expect(formatIsrc(null)).toBe('')
+  })
+})
+
+describe('parseDuration', () => {
+  it.each([
+    ['3:35', 215],
+    ['0:05', 5],
+    ['75:00', 4500],
+    ['1:02:07', 3727],
+    [' 3:35 ', 215],
+  ])('"%s" is %i seconds', (text, expected) => {
+    expect(parseDuration(text)).toBe(expected)
+  })
+
+  it('returns null for an empty value', () => {
+    expect(parseDuration('')).toBeNull()
+    expect(parseDuration('   ')).toBeNull()
+    expect(parseDuration(null)).toBeNull()
+  })
+
+  it.each(['215', '3:5', '3:60', '1:60:00', 'abc', '3.35'])('rejects "%s"', (text) => {
+    expect(parseDuration(text)).toBeUndefined()
   })
 })

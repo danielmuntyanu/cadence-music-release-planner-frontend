@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toSong, toSongs } from '@/models/song'
+import { createSongForm, toSong, toSongRequest, toSongs } from '@/models/song'
 
 describe('toSong', () => {
   it('returns null for non-object input', () => {
@@ -37,5 +38,37 @@ describe('toSongs', () => {
 
   it('returns an empty list for anything else', () => {
     expect(toSongs(undefined)).toEqual([])
+  })
+})
+
+describe('createSongForm', () => {
+  it('starts empty for a new song', () => {
+    expect(createSongForm()).toEqual({
+      title: '', duration: '', isrc: '', status: 'WRITING', explicit: false, lyrics: '',
+    })
+  })
+
+  it('shows length and ISRC as people write them', () => {
+    const form = createSongForm(toSong({ id: 1, title: 'Intro', durationSeconds: 215, isrc: 'USABC2600001', status: 'DONE' }))
+
+    expect(form.duration).toBe('3:35')
+    expect(form.isrc).toBe('US-ABC-26-00001')
+    expect(form.status).toBe('DONE')
+  })
+})
+
+describe('toSongRequest', () => {
+  it('converts the form into the API body', () => {
+    expect(toSongRequest({
+      title: '  Night Drive ', duration: '3:35', isrc: ' US-ABC-26-00001 ', status: 'RECORDING', explicit: true, lyrics: ' Neon ',
+    })).toEqual({
+      title: 'Night Drive', durationSeconds: 215, isrc: 'US-ABC-26-00001', status: 'RECORDING', lyrics: 'Neon', explicit: true,
+    })
+  })
+
+  it('sends null for empty optional fields, which clears them on PUT', () => {
+    const body = toSongRequest({ title: 'Intro', duration: '', isrc: '  ', status: 'WRITING', explicit: false, lyrics: '' })
+
+    expect(body).toMatchObject({ durationSeconds: null, isrc: null, lyrics: null })
   })
 })

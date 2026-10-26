@@ -4,6 +4,7 @@ import { useDisplay } from 'vuetify'
 import { VueDraggable } from 'vue-draggable-plus'
 import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 import SongDeleteDialog from '@/components/songs/SongDeleteDialog.vue'
+import SongDialog from '@/components/songs/SongDialog.vue'
 import { songService } from '@/services/song.service'
 import { SONG_STATUSES, getSongStatus } from '@/constants/song-statuses'
 import { formatDuration } from '@/utils/song-format'
@@ -15,7 +16,7 @@ const props = defineProps({
 
 defineEmits(['updated'])
 
-// Phones put status and length under the title; wider screens use table columns
+// The length column and the table header only exist from the "sm" breakpoint up
 const { smAndUp } = useDisplay()
 
 const songs = ref([])
@@ -25,6 +26,9 @@ const reordering = ref(false)
 const statusSavingId = ref(null)
 const deleteOpen = ref(false)
 const deleteTarget = ref(null)
+const songDialogOpen = ref(false)
+const dialogSong = ref(null)
+const dialogStartInEdit = ref(false)
 const snackbar = ref({ show: false, text: '', color: 'success' })
 
 // ---------- Summary ----------
@@ -68,6 +72,25 @@ async function load() {
 }
 
 watch(() => props.release.id, load, { immediate: true })
+
+// ---------- Song dialog ----------
+
+/** Opens the read view of a song, or its form when `edit` is true; no song means a new one */
+function openSong(song = null, edit = false) {
+  dialogSong.value = song
+  dialogStartInEdit.value = edit
+  songDialogOpen.value = true
+}
+
+function onSaved(saved, { created }) {
+  if (created) {
+    songs.value = [...songs.value, saved]
+    notify(`“${saved.title}” added`)
+  } else {
+    songs.value = songs.value.map((song) => (song.id === saved.id ? saved : song))
+    notify('Song saved')
+  }
+}
 
 // ---------- Reordering ----------
 
@@ -163,16 +186,19 @@ function onDeleted(song) {
   <v-card v-else-if="!songs.length" border flat class="px-6 py-16 text-center">
     <v-icon icon="mdi-playlist-music" size="48" class="mb-3 text-on-surface-variant" />
     <h2 class="mb-2 text-lg font-medium text-on-surface">No tracks yet</h2>
-    <p class="text-on-surface-variant">Tracks you add to {{ release.name }} will appear here.</p>
+    <p class="mb-6 text-on-surface-variant">Tracks you add to {{ release.name }} will appear here.</p>
+    <v-btn color="primary" prepend-icon="mdi-plus" @click="openSong()">Add song</v-btn>
   </v-card>
 
   <!-- Tracklist and summary -->
   <div v-else class="grid items-start gap-6 lg:grid-cols-3">
     <v-card border flat class="lg:col-span-2">
-      <div class="flex items-center justify-between px-4 pt-4 sm:px-6">
+      <div class="flex items-center gap-3 px-4 pt-4 sm:px-6">
         <h2 class="text-base font-medium text-on-surface">Tracklist</h2>
         <!-- The summary card shows this on wide screens -->
         <span class="text-sm text-on-surface-variant lg:hidden">{{ summary }}</span>
+        <v-spacer />
+        <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-plus" @click="openSong()">Add song</v-btn>
       </div>
 
       <div
@@ -207,7 +233,7 @@ function onDeleted(song) {
             class="drag-handle"
             icon="mdi-drag-vertical"
             variant="text"
-            size="small"
+            :size="smAndUp ? 'small' : 'x-small'"
             density="comfortable"
             :ripple="false"
             :disabled="reordering"
@@ -215,37 +241,32 @@ function onDeleted(song) {
           />
 
           <!-- Position in the list, so the number is right while dragging, before the server answers -->
-          <span class="text-end text-sm tabular-nums text-on-surface-variant">{{ index + 1 }}</span>
+          <span class="text-sm tabular-nums text-on-surface-variant sm:text-end">{{ index + 1 }}</span>
 
-          <div class="min-w-0">
-            <p class="song-title flex min-w-0 items-center gap-2 font-medium text-on-surface">
+          <!-- min-w-0 lets a long title shrink and truncate instead of pushing the status out -->
+          <button
+            type="button"
+            class="plain-button song-open min-w-0 rounded text-start"
+            :aria-label="`Open ${song.title}`"
+            @click="openSong(song)"
+          >
+            <span class="song-title flex min-w-0 items-center gap-2 font-medium text-on-surface">
               <span class="truncate">{{ song.title }}</span>
               <span v-if="song.explicit" class="explicit-badge shrink-0" title="Explicit lyrics" aria-label="Explicit">E</span>
-            </p>
-            <div v-if="!smAndUp" class="mt-1 flex items-center gap-3">
-              <SongStatusMenu
-                :status="song.status"
-                :loading="song.id === statusSavingId"
-                @change="onChangeStatus(song, $event)"
-              />
-              <span v-if="song.durationSeconds" class="text-sm tabular-nums text-on-surface-variant">
-                {{ formatDuration(song.durationSeconds) }}
-              </span>
-            </div>
+            </span>
+          </button>
+
+          <div>
+            <SongStatusMenu
+              :status="song.status"
+              :loading="song.id === statusSavingId"
+              @change="onChangeStatus(song, $event)"
+            />
           </div>
 
-          <template v-if="smAndUp">
-            <div>
-              <SongStatusMenu
-                :status="song.status"
-                :loading="song.id === statusSavingId"
-                @change="onChangeStatus(song, $event)"
-              />
-            </div>
-            <span class="text-end text-sm tabular-nums text-on-surface-variant">
-              {{ song.durationSeconds ? formatDuration(song.durationSeconds) : '—' }}
-            </span>
-          </template>
+          <span v-if="smAndUp" class="text-end text-sm tabular-nums text-on-surface-variant">
+            {{ song.durationSeconds ? formatDuration(song.durationSeconds) : '—' }}
+          </span>
 
           <v-menu location="bottom end">
             <template #activator="{ props: activator }">
@@ -258,6 +279,8 @@ function onDeleted(song) {
               />
             </template>
             <v-list density="compact" min-width="170">
+              <v-list-item prepend-icon="mdi-pencil-outline" title="Edit" @click="openSong(song, true)" />
+              <v-divider />
               <v-list-item
                 prepend-icon="mdi-arrow-up"
                 title="Move up"
@@ -313,20 +336,29 @@ function onDeleted(song) {
     </v-card>
   </div>
 
+  <SongDialog
+    v-model="songDialogOpen"
+    :release-id="release.id"
+    :song="dialogSong"
+    :start-in-edit="dialogStartInEdit"
+    @saved="onSaved"
+    @delete="openDelete"
+  />
   <SongDeleteDialog v-model="deleteOpen" :release-id="release.id" :song="deleteTarget" @deleted="onDeleted" />
   <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500">{{ snackbar.text }}</v-snackbar>
 </template>
 
 <style scoped>
-/* Phones: handle | # | title (status and length under it) | menu */
+/* Phones: handle | # | title | status | menu. Tight first columns leave room for the title */
 .song-grid {
   display: grid;
-  grid-template-columns: 2rem 1.5rem minmax(0, 1fr) 2.5rem;
+  grid-template-columns: 1.5rem 1.25rem minmax(0, 1fr) auto 2.25rem;
   align-items: center;
-  column-gap: 0.5rem;
+  column-gap: 0.375rem;
 }
 
-/* Wider screens (Vuetify "sm" and up): status and length get their own aligned columns */
+/* Wider screens (Vuetify "sm" and up): fixed status column so chips line up, plus length.
+   Must stay below the base rule: equal specificity, so the later rule wins */
 @media (min-width: 600px) {
   .song-grid {
     grid-template-columns: 2rem 1.5rem minmax(0, 1fr) 9.5rem 3rem 2.5rem;
@@ -351,6 +383,16 @@ function onDeleted(song) {
 /* The header already draws a line above the first row */
 .tracklist-head + * .song-row:first-child {
   border-top: none;
+}
+
+.song-open:hover .song-title > .truncate {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.song-open:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
 }
 
 .drag-handle {

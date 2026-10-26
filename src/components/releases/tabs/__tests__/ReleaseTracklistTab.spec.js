@@ -7,6 +7,7 @@ import SongDeleteDialog from '@/components/songs/SongDeleteDialog.vue'
 import { songService } from '@/services/song.service'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
+import SongDialog from '@/components/songs/SongDialog.vue'
 
 vi.mock('@/services/song.service', () => ({
   songService: { getAll: vi.fn(), reorder: vi.fn(), updateStatus: vi.fn(), delete: vi.fn() },
@@ -78,6 +79,7 @@ describe('ReleaseTracklistTab', () => {
       const wrapper = await mountTab([])
 
       expect(wrapper.text()).toContain('No tracks yet')
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Add song')).toBe(true)
     })
   })
 
@@ -170,5 +172,52 @@ describe('ReleaseTracklistTab', () => {
     expect(text).toMatch(/Explicit\s*1/)
     expect(text).toMatch(/Done\s*2/)
     expect(text).toMatch(/Writing\s*1/)
+  })
+})
+
+describe('song dialog', () => {
+  it('opens the read view when a title is clicked', async () => {
+    const wrapper = await mountTab()
+
+    await wrapper.find('button[aria-label="Open Night Drive"]').trigger('click')
+
+    const dialog = wrapper.findComponent(SongDialog)
+    expect(dialog.props()).toMatchObject({ modelValue: true, song: title, startInEdit: false })
+  })
+
+  it('opens an empty form from Add song', async () => {
+    const wrapper = await mountTab()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Add song').trigger('click')
+
+    expect(wrapper.findComponent(SongDialog).props()).toMatchObject({ modelValue: true, song: null })
+  })
+
+  it('appends a created song to the end', async () => {
+    const wrapper = await mountTab()
+    const created = song(74, 'Bonus Track')
+
+    wrapper.findComponent(SongDialog).vm.$emit('saved', created, { created: true })
+    await flushPromises()
+
+    expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive', 'Outro', 'Bonus Track'])
+  })
+
+  it('replaces an edited song in place', async () => {
+    const wrapper = await mountTab()
+
+    wrapper.findComponent(SongDialog).vm.$emit('saved', { ...title, title: 'Night Drive (Edit)' }, { created: false })
+    await flushPromises()
+
+    expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive (Edit)', 'Outro'])
+  })
+
+  it('opens the delete confirmation when the dialog asks to delete', async () => {
+    const wrapper = await mountTab()
+
+    wrapper.findComponent(SongDialog).vm.$emit('delete', title)
+    await flushPromises()
+
+    expect(wrapper.findComponent(SongDeleteDialog).props()).toMatchObject({ modelValue: true, song: title })
   })
 })

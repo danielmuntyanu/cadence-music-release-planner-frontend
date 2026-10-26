@@ -215,7 +215,12 @@ function onDeleted() {
 
           <!-- List -->
           <v-list v-else lines="two" class="pb-2">
-            <v-list-item v-for="release in releases" :key="release.id" class="px-4 sm:px-6">
+            <v-list-item 
+              v-for="release in releases" 
+              :key="release.id"
+              :to="{ name: 'release-detail', params: { id: release.id } }" 
+              class="px-4 sm:px-6"
+            >
               <template #prepend>
                 <v-avatar rounded="lg" size="48" color="surface-variant" class="me-4">
                   <v-img v-if="release.artworkUrl" :src="release.artworkUrl" :alt="release.name" cover />

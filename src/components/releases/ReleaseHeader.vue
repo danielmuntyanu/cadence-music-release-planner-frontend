@@ -38,7 +38,7 @@ const backdropStyle = computed(() =>
       <div class="relative w-full max-w-80 shrink-0 self-center sm:w-56 sm:self-auto lg:w-72">
         <button
           type="button"
-          class="artwork block w-full overflow-hidden rounded-xl shadow-2xl"
+          class="plain-button artwork block w-full overflow-hidden shadow-2xl"
           :disabled="!release.artworkUrl"
           :aria-label="release.artworkUrl ? `View ${release.name} cover` : undefined"
           @click="viewerOpen = true"
@@ -99,7 +99,7 @@ const backdropStyle = computed(() =>
 
     <!-- Full-size cover -->
     <v-dialog v-model="viewerOpen" max-width="900">
-      <v-card class="overflow-hidden" color="black">
+      <v-card class="overflow-hidden" color="black" rounded="0">
         <img :src="release.artworkUrl" :alt="`${release.name} cover`" class="block h-auto max-h-[85vh] w-full object-contain" />
         <v-btn
           icon="mdi-close"

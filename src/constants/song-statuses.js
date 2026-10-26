@@ -16,7 +16,7 @@
 /** @type {ReadonlyArray<SongStatusOption>} */
 export const SONG_STATUSES = Object.freeze([
   { value: 'WRITING', label: 'Writing', color: 'info', icon: 'mdi-pencil-outline' },
-  { value: 'ARRANGEMENT', label: 'Arrangement', color: 'teal', icon: 'mdi-piano' },
+  { value: 'ARRANGEMENT', label: 'Produce', color: 'error', icon: 'mdi-piano' },
   { value: 'RECORDING', label: 'Recording', color: 'warning', icon: 'mdi-microphone-outline' },
   { value: 'MIXING_MASTERING', label: 'Mix/Master', color: 'primary', icon: 'mdi-tune-vertical-variant' },
   { value: 'DONE', label: 'Done', color: 'success', icon: 'mdi-check-circle-outline' },

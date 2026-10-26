@@ -1,4 +1,5 @@
 import { DEFAULT_SONG_STATUS, isSongStatus } from '@/constants/song-statuses'
+import { formatDuration, formatIsrc, parseDuration } from '@/utils/song-format'
 
 /**
  * @typedef {import('@/constants/song-statuses').SongStatus} SongStatus
@@ -37,3 +38,35 @@ export function toSong(dto) {
 
 /** @param {unknown} data */
 export const toSongs = (data) => (Array.isArray(data) ? data.map(toSong).filter(Boolean) : [])
+
+
+
+/**
+ * Form state for the song dialog: duration and ISRC as the user types them.
+ * @param {Song | null} [song]
+ */
+export function createSongForm(song = null) {
+  return {
+    title: song?.title ?? '',
+    duration: formatDuration(song?.durationSeconds),
+    isrc: formatIsrc(song?.isrc),
+    status: song?.status ?? DEFAULT_SONG_STATUS,
+    explicit: song?.explicit ?? false,
+    lyrics: song?.lyrics ?? '',
+  }
+}
+
+/**
+ * Body for POST and PUT: every field is sent, null clears an optional one.
+ * The server normalizes the ISRC, so it is sent as typed.
+ */
+export function toSongRequest(form) {
+  return {
+    title: form.title.trim(),
+    durationSeconds: parseDuration(form.duration) ?? null,
+    isrc: form.isrc.trim() || null,
+    status: form.status,
+    lyrics: form.lyrics.trim() || null,
+    explicit: form.explicit,
+  }
+}
