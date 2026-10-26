@@ -7,7 +7,15 @@ const routes = [
   { path: '/artists', name: 'artists', component: RouteStub },
   { path: '/artists/:id', name: 'artist-detail', component: RouteStub },
   { path: '/releases', name: 'releases', component: RouteStub },
-  { path: '/releases/:id', name: 'release-detail', component: RouteStub },
+  { path: '/releases', name: 'releases', component: RouteStub },
+  {
+    path: '/releases/:id',
+    component: RouteStub,
+    children: [
+      { path: '', name: 'release-detail', component: RouteStub },
+      { path: 'tracklist', name: 'release-tracklist', component: RouteStub },
+    ],
+  },
 ]
 
 export const createTestRouter = () => createRouter({ history: createMemoryHistory(), routes })

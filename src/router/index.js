@@ -48,10 +48,22 @@ const routes = [
   },
   {
     path: '/releases/:id(\\d+)',
-    name: 'release-detail',
     props: true,
     component: () => import('@/views/ReleaseDetailView.vue'),
-    meta: { requiresAuth: true, }
+    meta: { requiresAuth: true, },
+    children: [
+      // The empty child carries the 'release-detail' name, so existing links open Overview
+      {
+        path: '',
+        name: 'release-detail',
+        component: () => import('@/components/releases/tabs/ReleaseOverviewTab.vue'),
+      },
+      {
+        path: 'tracklist',
+        name: 'release-tracklist',
+        component: () => import('@/components/releases/tabs/ReleaseTracklistTab.vue'),
+      },
+  ],
   },
   {
     path: "/dashboard",

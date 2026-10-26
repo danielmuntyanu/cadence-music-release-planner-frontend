@@ -14,6 +14,7 @@ import { getReleaseTypeLabel } from '@/constants/release-types'
 import { fromIsoDate } from '@/utils/date'
 import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
 import ArtistBanner from '@/components/artists/ArtistBanner.vue'
+import ExpandableText from '@/components/common/ExpandableText.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -245,9 +246,9 @@ function onDeleted() {
           <v-card border flat>
             <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">About</v-card-title>
             <v-card-text class="px-4 pb-4 sm:px-6">
-              <p class="whitespace-pre-line break-words text-on-surface-variant">
-                {{ artist.description || 'No bio yet.' }}
-              </p>
+              <v-card-text class="px-4 pb-4 sm:px-6">
+                <ExpandableText :text="artist.description" :lines="6" placeholder="No bio yet." class="text-on-surface-variant" />
+              </v-card-text>
             </v-card-text>
           </v-card>
 

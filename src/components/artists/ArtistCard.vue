@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import ArtistAvatar from './ArtistAvatar.vue'
-import ArtistBio from './ArtistBio.vue'
 import ArtistActionsMenu from './ArtistActionsMenu.vue'
 import { getSocialPlatformLabel } from '@/constants/social-platforms'
 import { pluralize } from '@/utils/format'
 import ArtistBanner from './ArtistBanner.vue'
+import ExpandableText from '@/components/common/ExpandableText.vue'
 
 const props = defineProps({
   artist: { type: Object, required: true },
@@ -59,7 +59,12 @@ const hiddenSocialsCount = computed(() => Math.max(0, props.artist.socials.lengt
         <p v-else class="mt-1 text-sm text-on-surface-variant">No genre yet</p>
       </div>
 
-      <ArtistBio :text="artist.description" />
+      <ExpandableText
+        :text="artist.description"
+        :lines="2"
+        placeholder="No bio yet."
+        class="min-h-10 text-sm text-on-surface-variant"
+      />
 
       <div v-if="artist.socials.length" class="flex flex-wrap gap-1">
         <v-chip
