@@ -1,59 +1,132 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import ReleaseOverviewTab from '@/components/releases/tabs/ReleaseOverviewTab.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
+import EditableField from '@/components/common/EditableField.vue'
+import { releaseService } from '@/services/release.service'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
 
-const mountTab = (overrides = {}) =>
-  mountWithPlugins(ReleaseOverviewTab, { props: { release: makeRelease(overrides) } })
+vi.mock('@/services/release.service', () => ({
+  releaseService: { update: vi.fn(), updateGenres: vi.fn(), updateDates: vi.fn() },
+}))
 
-/** The value span of the spec row with the given label */
-const row = (wrapper, label) => {
-  const found = wrapper.findAll('.spec-row').find((r) => r.find('span').text() === label)
-  return found.findAll('span')[1]
+vi.mock('@/services/artist.service', () => ({
+  artistService: { getAll: vi.fn().mockResolvedValue([]) },
+}))
+
+const mountTab = (overrides = {}) =>
+  mountWithPlugins(ReleaseOverviewTab, { props: { release: makeRelease({ id: 42, ...overrides }) } })
+
+const field = (wrapper, label) =>
+  wrapper.findAllComponents(EditableField).find((f) => f.props('label') === label)
+
+/** Calls the field's save function directly: the editing UI itself is covered by EditableField tests */
+const saveField = async (wrapper, label, draft) => {
+  await field(wrapper, label).props('save')(draft)
+  await flushPromises()
 }
 
 describe('ReleaseOverviewTab', () => {
-  it('shows filled values in the brand color', () => {
-    const wrapper = mountTab({ type: 'ALBUM', phase: 'PROMO' })
+  beforeEach(() => vi.clearAllMocks())
 
-    expect(row(wrapper, 'Type').text()).toBe('Album')
-    expect(row(wrapper, 'Type').classes()).toContain('text-primary')
-    expect(row(wrapper, 'Phase').text()).toBe('Promo')
+  describe('display', () => {
+    it('shows filled values in the brand color and missing ones muted', () => {
+      const wrapper = mountTab({ type: 'ALBUM', releaseDate: null })
+
+      const type = field(wrapper, 'Type').find('.text-primary')
+      expect(type.text()).toBe('Album')
+      expect(field(wrapper, 'Dates').text()).toContain('Not set')
+      expect(field(wrapper, 'Dates').find('.text-primary').exists()).toBe(false)
+    })
+
+    it('shows the original release under the release date for reissues', () => {
+      const wrapper = mountTab({ releaseDate: '2026-12-04', originalReleaseDate: '2020-05-01' })
+
+      expect(field(wrapper, 'Dates').text()).toContain('Original release:')
+    })
+
+    it('joins both genres in one row', () => {
+      expect(field(mountTab({ primaryGenre: 'ROCK', secondaryGenre: 'POP' }), 'Genres').text()).toContain('Rock · Pop')
+    })
+
+    it('shows notes in a collapsible block', () => {
+      expect(mountTab({ notes: 'Master v3' }).findComponent(ExpandableText).props('text')).toBe('Master v3')
+    })
+
+    it('lets the phase and creation date be read but not edited here', () => {
+      const wrapper = mountTab()
+
+      expect(field(wrapper, 'Phase').props('editable')).toBe(false)
+      expect(field(wrapper, 'Added').props('editable')).toBe(false)
+    })
   })
 
-  it('joins both genres in one row', () => {
-    expect(row(mountTab({ primaryGenre: 'ROCK', secondaryGenre: 'POP' }), 'Genres').text()).toBe('Rock · Pop')
-    expect(row(mountTab({ primaryGenre: 'ROCK', secondaryGenre: null }), 'Genres').text()).toBe('Rock')
-  })
+  describe('saving', () => {
+    it('saves the trimmed name through PATCH and reports the saved release', async () => {
+      const saved = makeRelease({ id: 42, name: 'Night Drive (Deluxe)' })
+      releaseService.update.mockResolvedValue(saved)
+      const wrapper = mountTab()
 
-  it('keeps missing values muted so they stand out as not filled in', () => {
-    const wrapper = mountTab({ releaseDate: null, originalReleaseDate: null })
+      await saveField(wrapper, 'Name', '  Night Drive (Deluxe) ')
 
-    expect(row(wrapper, 'Release date').text()).toBe('Not set')
-    expect(row(wrapper, 'Release date').classes()).not.toContain('text-primary')
-    expect(row(wrapper, 'Original release').text()).toBe('Not a reissue')
-  })
+      expect(releaseService.update).toHaveBeenCalledWith(42, { name: 'Night Drive (Deluxe)' })
+      expect(wrapper.emitted('updated')).toEqual([[saved]])
+    })
 
-  it('formats the release date without shifting the day', () => {
-    expect(row(mountTab({ releaseDate: '2026-11-14' }), 'Release date').text()).toContain('14')
-  })
+    it('saves the type through PATCH', async () => {
+      releaseService.update.mockResolvedValue(makeRelease({ id: 42 }))
+      const wrapper = mountTab()
 
-  it('shows notes in a collapsible block', () => {
-    const wrapper = mountTab({ notes: 'Master v3 approved' })
+      await saveField(wrapper, 'Type', 'EP')
 
-    const notes = wrapper.findComponent(ExpandableText)
-    expect(notes.props('text')).toBe('Master v3 approved')
-    expect(notes.props('lines')).toBe(4)
-  })
+      expect(releaseService.update).toHaveBeenCalledWith(42, { type: 'EP' })
+    })
 
-  it('lists artists with links, marking the primary one', () => {
-    const wrapper = mountTab({ artists: [{ id: 2, name: 'Ada', avatarUrl: null }, { id: 1, name: 'Nova', avatarUrl: null }] })
+    it('saves both dates together, null clearing one', async () => {
+      releaseService.updateDates.mockResolvedValue(makeRelease({ id: 42 }))
+      const wrapper = mountTab({ releaseDate: '2026-12-04', originalReleaseDate: '2020-05-01' })
 
-    const items = wrapper.findAllComponents({ name: 'VListItem' })
-    expect(items).toHaveLength(2)
-    expect(items[0].text()).toContain('Primary artist')
-    expect(items[1].text()).not.toContain('Primary artist')
-    expect(wrapper.find('a[href="/artists/2"]').exists()).toBe(true)
+      await saveField(wrapper, 'Dates', { releaseDate: '2026-12-04', originalReleaseDate: null })
+
+      expect(releaseService.updateDates).toHaveBeenCalledWith(42, { releaseDate: '2026-12-04', originalReleaseDate: null })
+    })
+
+    it('saves both genres together', async () => {
+      releaseService.updateGenres.mockResolvedValue(makeRelease({ id: 42 }))
+      const wrapper = mountTab()
+
+      await saveField(wrapper, 'Genres', { primaryGenre: 'ROCK', secondaryGenre: null })
+
+      expect(releaseService.updateGenres).toHaveBeenCalledWith(42, { primaryGenre: 'ROCK', secondaryGenre: null })
+    })
+
+    it('sends cleared notes as an empty string, which the API treats as "clear"', async () => {
+      releaseService.update.mockResolvedValue(makeRelease({ id: 42 }))
+      const wrapper = mountTab({ notes: 'Old' })
+
+      await saveField(wrapper, 'Notes', null)
+
+      expect(releaseService.update).toHaveBeenCalledWith(42, { notes: '' })
+    })
+
+    it('saves the artist order through PATCH', async () => {
+      releaseService.update.mockResolvedValue(makeRelease({ id: 42 }))
+      const wrapper = mountTab({ artists: [{ id: 1, name: 'Nova' }, { id: 2, name: 'Ada' }] })
+
+      expect(field(wrapper, 'Artists').props('value')).toEqual([1, 2])
+      await saveField(wrapper, 'Artists', [2, 1])
+
+      expect(releaseService.update).toHaveBeenCalledWith(42, { artistIds: [2, 1] })
+    })
+
+    it('does not report anything when saving fails, so the editor can show the error', async () => {
+      releaseService.update.mockRejectedValue({ response: { status: 409 } })
+      const wrapper = mountTab()
+
+      await expect(field(wrapper, 'Name').props('save')('Taken')).rejects.toBeTruthy()
+
+      expect(wrapper.emitted('updated')).toBeUndefined()
+    })
   })
 })

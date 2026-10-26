@@ -118,6 +118,7 @@ function onDeleted() {
         :phase-saving="phaseSaving"
         @change-phase="onChangePhase"
         @delete="deleteOpen = true"
+        @updated="onUpdated"
       />
 
       <v-tabs color="primary" show-arrows class="mt-6">

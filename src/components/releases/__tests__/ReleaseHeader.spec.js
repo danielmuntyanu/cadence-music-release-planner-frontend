@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
 import ReleaseHeader from '@/components/releases/ReleaseHeader.vue'
 import ReleasePhaseMenu from '@/components/releases/ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from '@/components/releases/ReleaseActionsMenu.vue'
+import ReleaseArtworkDialog from '@/components/releases/ReleaseArtworkDialog.vue'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
-import { flushPromises } from '@vue/test-utils'
+
+// The header now contains ReleaseArtworkDialog, which imports the release service.
+// The mock keeps these tests away from the real API.
+vi.mock('@/services/release.service', () => ({
+  releaseService: { uploadArtwork: vi.fn(), removeArtwork: vi.fn() },
+}))
 
 const mountHeader = (overrides = {}, props = {}) =>
   mountWithPlugins(ReleaseHeader, { props: { release: makeRelease(overrides), ...props } })
@@ -80,5 +87,26 @@ describe('ReleaseHeader', () => {
     const wrapper = mountHeader({ artworkUrl: null })
 
     expect(wrapper.find('button.artwork').attributes('disabled')).toBeDefined()
+  })
+
+  it('opens the cover dialog from the camera button', async () => {
+    const wrapper = mountWithPlugins(ReleaseHeader, {
+      props: { release: makeRelease({ name: 'Night Drive' }) },
+      attachTo: document.body,
+    })
+
+    await wrapper.find('button[aria-label="Change cover"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findComponent(ReleaseArtworkDialog).props('modelValue')).toBe(true)
+  })
+
+  it('re-emits the release saved in the cover dialog', () => {
+    const wrapper = mountHeader()
+    const saved = makeRelease({ artworkUrl: 'https://signed.test/new.jpg' })
+
+    wrapper.findComponent(ReleaseArtworkDialog).vm.$emit('updated', saved)
+
+    expect(wrapper.emitted('updated')).toEqual([[saved]])
   })
 })

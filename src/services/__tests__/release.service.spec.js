@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '@/services/api'
+import { uploadService } from '@/services/upload.service'
 import { releaseService } from '@/services/release.service'
 
 vi.mock('@/services/api', () => ({
-  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
+}))
+
+vi.mock('@/services/upload.service', () => ({
+  uploadService: { putImage: vi.fn() },
 }))
 
 const RELEASE_DTO = { id: 7, name: 'Night Drive', type: 'EP', phase: 'PROMO', primaryGenre: 'POP', artists: [] }
@@ -62,12 +67,48 @@ describe('releaseService', () => {
     expect(release.notes).toBe('Final mix')
   })
 
+  it('updateGenres puts exactly the two genres', async () => {
+    api.put.mockResolvedValue({ data: RELEASE_DTO })
+
+    await releaseService.updateGenres(7, { primaryGenre: 'ROCK', secondaryGenre: null, extra: 'ignored' })
+
+    expect(api.put).toHaveBeenCalledWith('/releases/7/genres', { primaryGenre: 'ROCK', secondaryGenre: null })
+  })
+
+  it('updateDates puts exactly the two dates', async () => {
+    api.put.mockResolvedValue({ data: RELEASE_DTO })
+
+    await releaseService.updateDates(7, { releaseDate: null, originalReleaseDate: '2020-05-01' })
+
+    expect(api.put).toHaveBeenCalledWith('/releases/7/dates', { releaseDate: null, originalReleaseDate: '2020-05-01' })
+  })
+
   it('updatePhase patches the phase endpoint with a phase body', async () => {
     api.patch.mockResolvedValue({ data: { ...RELEASE_DTO, phase: 'CATALOG' } })
 
     await releaseService.updatePhase(7, 'CATALOG')
 
     expect(api.patch).toHaveBeenCalledWith('/releases/7/phase', { phase: 'CATALOG' })
+  })
+
+  it('uploadArtwork puts the file to the artwork endpoint and maps the release', async () => {
+    const file = new File(['x'], 'cover.png', { type: 'image/png' })
+    const onProgress = vi.fn()
+    uploadService.putImage.mockResolvedValue({ ...RELEASE_DTO, artworkUrl: 'https://signed.test/c.jpg' })
+
+    const release = await releaseService.uploadArtwork(7, file, onProgress)
+
+    expect(uploadService.putImage).toHaveBeenCalledWith('/releases/7/artwork', file, onProgress)
+    expect(release.artworkUrl).toBe('https://signed.test/c.jpg')
+  })
+
+  it('removeArtwork deletes the artwork and maps the release', async () => {
+    api.delete.mockResolvedValue({ data: { ...RELEASE_DTO, artworkUrl: null } })
+
+    const release = await releaseService.removeArtwork(7)
+
+    expect(api.delete).toHaveBeenCalledWith('/releases/7/artwork')
+    expect(release.artworkUrl).toBeNull()
   })
 
   it('delete sends a DELETE for the release id', async () => {
@@ -78,17 +119,30 @@ describe('releaseService', () => {
     expect(api.delete).toHaveBeenCalledWith('/releases/7')
   })
 
-  it.each([
-    ['getAll', 'get', [{}]],
-    ['getById', 'get', [7]],
-    ['create', 'post', [{}]],
-    ['update', 'patch', [7, {}]],
-    ['updatePhase', 'patch', [7, 'PROMO']],
-    ['delete', 'delete', [7]],
-  ])('%s passes API errors to the caller untouched', async (method, httpMethod, args) => {
-    const error = httpError(500)
-    api[httpMethod].mockRejectedValue(error)
+  describe('errors', () => {
+    it.each([
+      ['getAll', 'get', [{}]],
+      ['getById', 'get', [7]],
+      ['create', 'post', [{}]],
+      ['update', 'patch', [7, {}]],
+      ['updateGenres', 'put', [7, { primaryGenre: 'ROCK', secondaryGenre: null }]],
+      ['updateDates', 'put', [7, { releaseDate: null, originalReleaseDate: null }]],
+      ['updatePhase', 'patch', [7, 'PROMO']],
+      ['removeArtwork', 'delete', [7]],
+      ['delete', 'delete', [7]],
+    ])('%s passes API errors to the caller untouched', async (method, httpMethod, args) => {
+      const error = httpError(500)
+      api[httpMethod].mockRejectedValue(error)
 
-    await expect(releaseService[method](...args)).rejects.toBe(error)
+      await expect(releaseService[method](...args)).rejects.toBe(error)
+    })
+
+    // uploadArtwork goes through uploadService, not api, so it gets its own check
+    it('uploadArtwork passes upload errors to the caller untouched', async () => {
+      const error = httpError(413)
+      uploadService.putImage.mockRejectedValue(error)
+
+      await expect(releaseService.uploadArtwork(7, new File(['x'], 'cover.png'))).rejects.toBe(error)
+    })
   })
 })

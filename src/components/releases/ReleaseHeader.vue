@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import ReleaseArtwork from './ReleaseArtwork.vue'
+import ReleaseArtworkDialog from './ReleaseArtworkDialog.vue'
 import ReleasePhaseMenu from './ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from './ReleaseActionsMenu.vue'
 import { getReleaseTypeLabel } from '@/constants/release-types'
@@ -12,9 +13,10 @@ const props = defineProps({
   phaseSaving: { type: Boolean, default: false },
 })
 
-defineEmits(['change-phase', 'delete'])
+defineEmits(['change-phase', 'delete', 'updated'])
 
 const viewerOpen = ref(false)
+const artworkOpen = ref(false)
 
 const date = computed(() => describeReleaseDate(props.release.releaseDate))
 const genres = computed(() =>
@@ -32,15 +34,25 @@ const backdropStyle = computed(() =>
     <div class="backdrop-shade absolute inset-0" aria-hidden="true" />
 
     <div class="relative flex flex-col gap-6 p-4 sm:flex-row sm:items-end sm:p-6 lg:p-8">
-      <button
-        type="button"
-        class="artwork w-full max-w-80 shrink-0 self-center overflow-hidden rounded-xl shadow-2xl sm:w-56 sm:self-auto lg:w-72"
-        :disabled="!release.artworkUrl"
-        :aria-label="release.artworkUrl ? `View ${release.name} cover` : undefined"
-        @click="viewerOpen = true"
-      >
-        <ReleaseArtwork :src="release.artworkUrl" :name="release.name" :type="release.type" :icon-size="96" />
-      </button>
+      <!-- A button cannot contain another button, so the cover and its edit action are siblings -->
+      <div class="relative w-full max-w-80 shrink-0 self-center sm:w-56 sm:self-auto lg:w-72">
+        <button
+          type="button"
+          class="artwork block w-full overflow-hidden rounded-xl shadow-2xl"
+          :disabled="!release.artworkUrl"
+          :aria-label="release.artworkUrl ? `View ${release.name} cover` : undefined"
+          @click="viewerOpen = true"
+        >
+          <ReleaseArtwork :src="release.artworkUrl" :name="release.name" :type="release.type" :icon-size="96" />
+        </button>
+        <v-btn
+          icon="mdi-camera-outline"
+          size="small"
+          class="change-cover absolute bottom-2 right-2"
+          aria-label="Change cover"
+          @click="artworkOpen = true"
+        />
+      </div>
 
       <div class="min-w-0 flex-1">
         <p class="text-xs font-medium uppercase tracking-widest text-on-surface-variant">
@@ -99,6 +111,8 @@ const backdropStyle = computed(() =>
         />
       </v-card>
     </v-dialog>
+
+    <ReleaseArtworkDialog v-model="artworkOpen" :release="release" @updated="$emit('updated', $event)" />
   </v-card>
 </template>
 
@@ -130,5 +144,10 @@ const backdropStyle = computed(() =>
 
 .artwork:not(:disabled):hover {
   transform: scale(1.02);
+}
+
+.change-cover {
+  background: rgba(var(--v-theme-surface), 0.8);
+  backdrop-filter: blur(8px);
 }
 </style>
