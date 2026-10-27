@@ -30,6 +30,10 @@ describe('toRelease', () => {
       originalReleaseDate: null,
       createdAt: null,
       artists: [],
+      songCount: 0,
+      doneSongCount: 0,
+      progressPercent: 0,
+      explicit: false,
     })
   })
 
@@ -52,6 +56,26 @@ describe('toRelease', () => {
       { id: 2, name: 'Ada', avatarUrl: null },
       { id: 1, name: 'Nova', avatarUrl: 'https://img.test/n.png' },
     ])
+  })
+
+  describe('progress derived from songs', () => {
+    it('maps the counts, the percentage and the explicit mark', () => {
+      const release = toRelease({ id: 1, songCount: 5, doneSongCount: 1, progressPercent: 50, explicit: true })
+
+      expect(release).toMatchObject({ songCount: 5, doneSongCount: 1, progressPercent: 50, explicit: true })
+    })
+
+    it.each([
+      [140, 100],
+      [-20, 0],
+    ])('clamps %i%% to %i%%, so a broken value never overflows the bar', (input, expected) => {
+      expect(toRelease({ id: 1, progressPercent: input }).progressPercent).toBe(expected)
+    })
+
+    it('treats only a real true as explicit', () => {
+      expect(toRelease({ id: 1, explicit: 'true' }).explicit).toBe(false)
+      expect(toRelease({ id: 1, explicit: 1 }).explicit).toBe(false)
+    })
   })
 })
 
@@ -87,6 +111,14 @@ describe('createReleaseForm', () => {
 
   it('does not carry the artwork: the server sets it after an upload', () => {
     expect(createReleaseForm(toRelease({ id: 1, artworkUrl: 'https://img.test/a.png' }))).not.toHaveProperty('artworkUrl')
+  })
+
+  it('does not carry derived progress: the server computes it from songs', () => {
+    const form = createReleaseForm(toRelease({ id: 1, songCount: 5, progressPercent: 50, explicit: true }))
+
+    expect(form).not.toHaveProperty('songCount')
+    expect(form).not.toHaveProperty('progressPercent')
+    expect(form).not.toHaveProperty('explicit')
   })
 })
 
@@ -183,11 +215,5 @@ describe('route query', () => {
     const query = { phase: ['PROMO'], genre: ['POP'], artistId: '7', q: 'night', sort: 'name,asc', page: '2' }
 
     expect(toReleaseRouteQuery(fromReleaseRouteQuery(query))).toEqual(query)
-  })
-
-  it('maps derived progress fields, clamping the percentage', () => {
-    const release = toRelease({ ...RELEASE_DTO, songCount: 5, doneSongCount: 1, progressPercent: 140, explicit: true })
-
-    expect(release).toMatchObject({ songCount: 5, doneSongCount: 1, progressPercent: 100, explicit: true })
   })
 })

@@ -16,6 +16,10 @@ export function makeRelease(overrides = {}) {
     originalReleaseDate: null,
     createdAt: '2026-10-01T10:00:00Z',
     artists: [],
+    songCount: 0,
+    doneSongCount: 0,
+    progressPercent: 0,
+    explicit: false,
     ...overrides,
   }
 }

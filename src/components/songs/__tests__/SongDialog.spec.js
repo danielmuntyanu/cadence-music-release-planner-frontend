@@ -5,15 +5,16 @@ import CopyButton from '@/components/common/CopyButton.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
 import { songService } from '@/services/song.service'
 import { mountWithPlugins } from '@/test-utils/mount'
+import { makeSong } from '@/test-utils/fixtures/songs'
 
 vi.mock('@/services/song.service', () => ({
   songService: { create: vi.fn(), replace: vi.fn() },
 }))
 
-const SONG = {
-  id: 71, trackNumber: 2, title: 'Night Drive', durationSeconds: 215, isrc: 'USABC2600001',
-  status: 'RECORDING', lyrics: 'Neon on the windshield', explicit: true, createdAt: null,
-}
+const SONG = makeSong({
+  id: 71, trackNumber: 2, durationSeconds: 215, isrc: 'USABC2600001',
+  status: 'RECORDING', lyrics: 'Neon on the windshield', explicit: true,
+})
 
 async function openDialog(props = {}) {
   const wrapper = mountWithPlugins(SongDialog, {

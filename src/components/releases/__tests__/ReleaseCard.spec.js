@@ -4,6 +4,7 @@ import ReleasePhaseMenu from '@/components/releases/ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from '@/components/releases/ReleaseActionsMenu.vue'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
+import ReleaseProgress from '@/components/releases/ReleaseProgress.vue'
 
 const mountCard = (overrides = {}) => mountWithPlugins(ReleaseCard, { props: { release: makeRelease(overrides) } })
 
@@ -60,5 +61,11 @@ describe('ReleaseCard', () => {
     wrapper.findComponent(ReleaseActionsMenu).vm.$emit('delete')
 
     expect(wrapper.emitted('delete')[0]).toEqual([release])
+  })
+
+  it('shows the release progress', () => {
+    const wrapper = mountCard(makeRelease({ songCount: 4, doneSongCount: 1, progressPercent: 44 }))
+
+    expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 44, done: 1, total: 4 })
   })
 })

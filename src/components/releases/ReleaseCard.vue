@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import ReleaseArtwork from './ReleaseArtwork.vue'
 import ReleasePhaseMenu from './ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from './ReleaseActionsMenu.vue'
+import ReleaseProgress from './ReleaseProgress.vue'
+import ExplicitBadge from '@/components/common/ExplicitBadge.vue'
 import { getReleaseTypeLabel } from '@/constants/release-types'
 import { getGenreLabel } from '@/constants/genres'
 import { describeReleaseDate } from '@/utils/release-date'
@@ -45,10 +47,11 @@ const genres = computed(() =>
     </div>
 
     <v-card-text class="flex flex-1 flex-col gap-1 p-4">
-      <h3 class="truncate text-base font-medium">
-        <RouterLink :to="detailRoute" class="text-on-surface hover:underline focus-visible:underline">
+      <h3 class="flex min-w-0 items-center gap-2 text-base font-medium">
+        <RouterLink :to="detailRoute" class="truncate text-on-surface hover:underline focus-visible:underline">
           {{ release.name }}
         </RouterLink>
+        <ExplicitBadge v-if="release.explicit" />
       </h3>
       <p class="truncate text-sm text-on-surface-variant">{{ artistNames }}</p>
 
@@ -59,6 +62,14 @@ const genres = computed(() =>
       <p class="truncate text-xs text-on-surface-variant">
         {{ getReleaseTypeLabel(release.type) }} · {{ genres }}
       </p>
+
+      <!-- mt-auto: progress bars line up at the bottom across cards of different heights -->
+      <ReleaseProgress
+        class="mt-auto pt-3"
+        :percent="release.progressPercent"
+        :done="release.doneSongCount"
+        :total="release.songCount"
+      />
     </v-card-text>
 
     <v-card-actions class="px-4 pb-4 pt-0">
@@ -66,6 +77,5 @@ const genres = computed(() =>
         Overview / Edit
       </v-btn>
     </v-card-actions>
-    <ReleaseProgress :percent="release.progressPercent" :done="release.doneSongCount" :total="release.songCount" />
   </v-card>
 </template>

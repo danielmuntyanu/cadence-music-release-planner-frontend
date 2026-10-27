@@ -9,15 +9,14 @@ import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
 import SongDialog from '@/components/songs/SongDialog.vue'
 import ReleaseProgress from '../../ReleaseProgress.vue'
+import { makeSong } from '@/test-utils/fixtures/songs'
+
 
 vi.mock('@/services/song.service', () => ({
   songService: { getAll: vi.fn(), reorder: vi.fn(), updateStatus: vi.fn(), delete: vi.fn() },
 }))
 
-const song = (id, title, extra = {}) => ({
-  id, trackNumber: 0, title, durationSeconds: null, isrc: null,
-  status: 'WRITING', lyrics: '', explicit: false, createdAt: null, ...extra,
-})
+const song = (id, title, extra = {}) => makeSong({ id, title, ...extra })
 
 const intro = song(71, 'Intro', { durationSeconds: 60 })
 const title = song(72, 'Night Drive', { durationSeconds: 215, isrc: 'USABC2600001', explicit: true })
