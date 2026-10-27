@@ -2,11 +2,13 @@
 import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { VueDraggable } from 'vue-draggable-plus'
+import ExplicitBadge from '@/components/common/ExplicitBadge.vue'
+import ReleaseProgress from '@/components/releases/ReleaseProgress.vue'
 import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 import SongDeleteDialog from '@/components/songs/SongDeleteDialog.vue'
 import SongDialog from '@/components/songs/SongDialog.vue'
 import { songService } from '@/services/song.service'
-import { SONG_STATUSES, getSongStatus } from '@/constants/song-statuses'
+import { SONG_STATUSES, getSongStatus, getSongStatusProgress } from '@/constants/song-statuses'
 import { formatDuration } from '@/utils/song-format'
 import { pluralize } from '@/utils/format'
 
@@ -14,7 +16,9 @@ const props = defineProps({
   release: { type: Object, required: true },
 })
 
-defineEmits(['updated'])
+// songs-changed: progress and the explicit mark on the release are derived from songs,
+// so the page reloads the release after any change to them
+const emit = defineEmits(['updated', 'songs-changed'])
 
 // The length column and the table header only exist from the "sm" breakpoint up
 const { smAndUp } = useDisplay()
@@ -40,12 +44,20 @@ const summary = computed(() => {
 })
 const explicitCount = computed(() => songs.value.filter((song) => song.explicit).length)
 const withoutLength = computed(() => songs.value.filter((song) => song.durationSeconds == null).length)
+const doneCount = computed(() => songs.value.filter((song) => song.status === 'DONE').length)
 const statusCounts = computed(() =>
   SONG_STATUSES.map((status) => ({
     ...status,
     count: songs.value.filter((song) => song.status === status.value).length,
   })),
 )
+
+// Same formula as the server (ReleaseMapper.progressPercent), so both always agree
+const progressPercent = computed(() => {
+  if (!songs.value.length) return 0
+  const sum = songs.value.reduce((total, song) => total + getSongStatusProgress(song.status), 0)
+  return Math.round((sum / songs.value.length) * 100)
+})
 
 function notify(text, color = 'success') {
   snackbar.value = { show: true, text, color }
@@ -90,6 +102,7 @@ function onSaved(saved, { created }) {
     songs.value = songs.value.map((song) => (song.id === saved.id ? saved : song))
     notify('Song saved')
   }
+  emit('songs-changed')
 }
 
 // ---------- Reordering ----------
@@ -144,6 +157,8 @@ async function onChangeStatus(song, status) {
     const updated = await songService.updateStatus(props.release.id, song.id, status)
     songs.value = songs.value.map((s) => (s.id === updated.id ? updated : s))
     notify(`“${song.title}” moved to ${getSongStatus(status).label}`)
+    // Only after success: a failed request changed nothing
+    emit('songs-changed')
   } catch (e) {
     console.error('### songs/updateStatus failed:\n', e)
     notify('Could not change the status. Try again.', 'error')
@@ -160,6 +175,7 @@ function openDelete(song) {
 function onDeleted(song) {
   songs.value = songs.value.filter((s) => s.id !== song.id)
   notify('Song deleted')
+  emit('songs-changed')
 }
 </script>
 
@@ -252,7 +268,7 @@ function onDeleted(song) {
           >
             <span class="song-title flex min-w-0 items-center gap-2 font-medium text-on-surface">
               <span class="truncate">{{ song.title }}</span>
-              <span v-if="song.explicit" class="explicit-badge shrink-0" title="Explicit lyrics" aria-label="Explicit">E</span>
+              <ExplicitBadge v-if="song.explicit" />
             </span>
           </button>
 
@@ -304,6 +320,7 @@ function onDeleted(song) {
     <v-card border flat>
       <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Summary</v-card-title>
       <div class="px-4 pb-4 sm:px-6">
+        <ReleaseProgress class="mb-3" :percent="progressPercent" :done="doneCount" :total="songs.length" />
         <div class="stat-row">
           <span class="text-sm text-on-surface-variant">Songs</span>
           <span class="font-medium text-primary">{{ songs.length }}</span>
@@ -416,19 +433,5 @@ function onDeleted(song) {
   gap: 1rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.explicit-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  color: rgb(var(--v-theme-surface));
-  background: rgb(var(--v-theme-on-surface-variant));
 }
 </style>

@@ -66,5 +66,6 @@ const genres = computed(() =>
         Overview / Edit
       </v-btn>
     </v-card-actions>
+    <ReleaseProgress :percent="release.progressPercent" :done="release.doneSongCount" :total="release.songCount" />
   </v-card>
 </template>

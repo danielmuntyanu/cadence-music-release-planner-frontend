@@ -8,6 +8,7 @@ import { songService } from '@/services/song.service'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
 import SongDialog from '@/components/songs/SongDialog.vue'
+import ReleaseProgress from '../../ReleaseProgress.vue'
 
 vi.mock('@/services/song.service', () => ({
   songService: { getAll: vi.fn(), reorder: vi.fn(), updateStatus: vi.fn(), delete: vi.fn() },
@@ -219,5 +220,21 @@ describe('song dialog', () => {
     await flushPromises()
 
     expect(wrapper.findComponent(SongDeleteDialog).props()).toMatchObject({ modelValue: true, song: title })
+  })
+
+  it('shows live progress computed from the songs', async () => {
+    const wrapper = await mountTab([{ ...intro, status: 'DONE' }, { ...title, status: 'WRITING' }])
+
+    expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 50, done: 1, total: 2 })
+  })
+
+  it('reports song changes so the page can refresh derived values', async () => {
+    songService.updateStatus.mockResolvedValue({ ...intro, status: 'DONE' })
+    const wrapper = await mountTab()
+
+    wrapper.findAllComponents(SongStatusMenu)[0].vm.$emit('change', 'DONE')
+    await flushPromises()
+
+    expect(wrapper.emitted('songs-changed')).toHaveLength(1)
   })
 })

@@ -184,4 +184,10 @@ describe('route query', () => {
 
     expect(toReleaseRouteQuery(fromReleaseRouteQuery(query))).toEqual(query)
   })
+
+  it('maps derived progress fields, clamping the percentage', () => {
+    const release = toRelease({ ...RELEASE_DTO, songCount: 5, doneSongCount: 1, progressPercent: 140, explicit: true })
+
+    expect(release).toMatchObject({ songCount: 5, doneSongCount: 1, progressPercent: 100, explicit: true })
+  })
 })

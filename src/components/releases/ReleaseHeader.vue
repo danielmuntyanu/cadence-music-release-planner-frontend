@@ -4,6 +4,8 @@ import ReleaseArtwork from './ReleaseArtwork.vue'
 import ReleaseArtworkDialog from './ReleaseArtworkDialog.vue'
 import ReleasePhaseMenu from './ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from './ReleaseActionsMenu.vue'
+import ReleaseProgress from './ReleaseProgress.vue'
+import ExplicitBadge from '@/components/common/ExplicitBadge.vue'
 import { getReleaseTypeLabel } from '@/constants/release-types'
 import { getGenreLabel } from '@/constants/genres'
 import { describeReleaseDate } from '@/utils/release-date'
@@ -30,12 +32,18 @@ const backdropStyle = computed(() =>
 <template>
   <v-card border flat class="relative overflow-hidden">
     <!-- Blurred copy of the cover: gives each release page its own color -->
-    <div class="backdrop absolute inset-0" :class="!release.artworkUrl && 'backdrop-fallback'" :style="backdropStyle" aria-hidden="true" />
+    <div
+      class="backdrop absolute inset-0"
+      :class="!release.artworkUrl && 'backdrop-fallback'"
+      :style="backdropStyle"
+      aria-hidden="true"
+    />
     <div class="backdrop-shade absolute inset-0" aria-hidden="true" />
 
     <div class="relative flex flex-col gap-6 p-4 sm:flex-row sm:items-end sm:p-6 lg:p-8">
       <!-- A button cannot contain another button, so the cover and its edit action are siblings -->
       <div class="relative w-full max-w-80 shrink-0 self-center sm:w-56 sm:self-auto lg:w-72">
+        <!-- Square and unframed, as stores show it; the shadow only adds depth -->
         <button
           type="button"
           class="plain-button artwork block w-full overflow-hidden shadow-2xl"
@@ -43,7 +51,12 @@ const backdropStyle = computed(() =>
           :aria-label="release.artworkUrl ? `View ${release.name} cover` : undefined"
           @click="viewerOpen = true"
         >
-          <ReleaseArtwork :src="release.artworkUrl" :name="release.name" :type="release.type" :icon-size="96" />
+          <ReleaseArtwork
+            :src="release.artworkUrl"
+            :name="release.name"
+            :type="release.type"
+            :icon-size="96"
+          />
         </button>
         <v-btn
           icon="mdi-camera-outline"
@@ -55,8 +68,9 @@ const backdropStyle = computed(() =>
       </div>
 
       <div class="min-w-0 flex-1">
-        <p class="text-xs font-medium uppercase tracking-widest text-on-surface-variant">
+        <p class="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-on-surface-variant">
           {{ getReleaseTypeLabel(release.type) }}
+          <ExplicitBadge v-if="release.explicit" />
         </p>
         <h1 class="mt-1 break-words text-3xl font-semibold leading-tight text-on-surface sm:text-4xl lg:text-5xl">
           {{ release.name }}
@@ -84,12 +98,22 @@ const backdropStyle = computed(() =>
             variant="flat"
             @change="$emit('change-phase', $event)"
           />
-          <span class="flex items-center gap-1 text-sm" :class="date.upcoming ? 'text-primary' : 'text-on-surface-variant'">
+          <span
+            class="flex items-center gap-1 text-sm"
+            :class="date.upcoming ? 'text-primary' : 'text-on-surface-variant'"
+          >
             <v-icon :icon="date.icon" size="16" />
             {{ date.label }}
           </span>
           <span v-if="genres" class="text-sm text-on-surface-variant">{{ genres }}</span>
         </div>
+
+        <ReleaseProgress
+          class="mt-4 max-w-sm"
+          :percent="release.progressPercent"
+          :done="release.doneSongCount"
+          :total="release.songCount"
+        />
       </div>
 
       <div class="absolute right-2 top-2 sm:static sm:self-start">
@@ -100,7 +124,11 @@ const backdropStyle = computed(() =>
     <!-- Full-size cover -->
     <v-dialog v-model="viewerOpen" max-width="900">
       <v-card class="overflow-hidden" color="black" rounded="0">
-        <img :src="release.artworkUrl" :alt="`${release.name} cover`" class="block h-auto max-h-[85vh] w-full object-contain" />
+        <img
+          :src="release.artworkUrl"
+          :alt="`${release.name} cover`"
+          class="block h-auto max-h-[85vh] w-full object-contain"
+        />
         <v-btn
           icon="mdi-close"
           variant="text"
@@ -144,6 +172,10 @@ const backdropStyle = computed(() =>
 
 .artwork:not(:disabled):hover {
   transform: scale(1.02);
+}
+
+.artwork:disabled {
+  cursor: default;
 }
 
 .change-cover {

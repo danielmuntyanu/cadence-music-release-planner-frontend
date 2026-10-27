@@ -71,6 +71,11 @@ export function toRelease(dto) {
     originalReleaseDate: dto.originalReleaseDate ?? null,
     createdAt: dto.createdAt ?? null,
     artists: Array.isArray(dto.artists) ? dto.artists.map(toReleaseArtist).filter(Boolean) : [],
+    songCount: dto.songCount ?? 0,
+    doneSongCount: dto.doneSongCount ?? 0,
+    // Clamped: a broken value must never draw a bar past its track
+    progressPercent: Math.min(100, Math.max(0, dto.progressPercent ?? 0)),
+    explicit: dto.explicit === true,
   }
 }
 

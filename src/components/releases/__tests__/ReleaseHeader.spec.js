@@ -6,6 +6,8 @@ import ReleaseActionsMenu from '@/components/releases/ReleaseActionsMenu.vue'
 import ReleaseArtworkDialog from '@/components/releases/ReleaseArtworkDialog.vue'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
+import ExplicitBadge from '@/components/common/ExplicitBadge.vue'
+import ReleaseProgress from '@/components/releases/ReleaseProgress.vue'
 
 // The header now contains ReleaseArtworkDialog, which imports the release service.
 // The mock keeps these tests away from the real API.
@@ -108,5 +110,16 @@ describe('ReleaseHeader', () => {
     wrapper.findComponent(ReleaseArtworkDialog).vm.$emit('updated', saved)
 
     expect(wrapper.emitted('updated')).toEqual([[saved]])
+  })
+
+  it('marks a release with explicit songs', () => {
+    expect(mountHeader({ explicit: true }).findComponent(ExplicitBadge).exists()).toBe(true)
+    expect(mountHeader({ explicit: false }).findComponent(ExplicitBadge).exists()).toBe(false)
+  })
+
+  it('shows the release progress', () => {
+    const wrapper = mountHeader({ progressPercent: 50, doneSongCount: 1, songCount: 5 })
+
+    expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 50, done: 1, total: 5 })
   })
 })

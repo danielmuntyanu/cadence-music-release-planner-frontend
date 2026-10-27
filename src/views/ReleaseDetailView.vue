@@ -76,6 +76,15 @@ async function onChangePhase(phase) {
 function onDeleted() {
   router.replace({ name: 'releases' })
 }
+
+/** Song changes alter derived values (progress, explicit): reload them quietly */
+async function refreshRelease() {
+  try {
+    release.value = await releaseService.getById(releaseId.value)
+  } catch (e) {
+    console.error('### releases/refresh failed:\n', e)
+  }
+}
 </script>
 
 <template>
@@ -129,7 +138,7 @@ function onDeleted() {
       <v-divider class="mb-6" />
 
       <RouterView v-slot="{ Component }">
-        <component :is="Component" :release="release" @updated="onUpdated" />
+        <component :is="Component" :release="release" @updated="onUpdated" @songs-changed="refreshRelease" />
       </RouterView>
     </template>
 
