@@ -78,4 +78,16 @@ describe('DownloadButton', () => {
     expect(button.attributes('aria-label')).toBe('Download cover')
     expect(button.classes()).toContain('cover-action')
   })
+
+  it('can look like the round buttons next to it', () => {
+    const wrapper = mountWithPlugins(DownloadButton, {
+      props: { getLink: vi.fn(), variant: 'elevated', density: 'default', size: 'small' },
+    })
+
+    expect(wrapper.findComponent({ name: 'VBtn' }).props()).toMatchObject({
+      variant: 'elevated',
+      density: 'default',
+      size: 'small',
+    })
+  })
 })

@@ -85,6 +85,8 @@ async function coverDownloadLink() {
             :get-link="coverDownloadLink"
             label="Download cover"
             size="small"
+            variant="elevated"
+            density="default"
             class="cover-action"
             @error="downloadFailed = true"
           />
@@ -209,6 +211,8 @@ async function coverDownloadLink() {
 .artwork:disabled {
   cursor: default;
 }
+
+
 
 /* Readable over any cover: a frosted surface behind each icon */
 .cover-action {

@@ -12,6 +12,9 @@ const props = defineProps({
   getLink: { type: Function, required: true },
   label: { type: String, default: 'Download' },
   size: { type: String, default: 'x-small' },
+  // Plain icon in lists and rows; "elevated" next to other round buttons, e.g. on the cover
+  variant: { type: String, default: 'text' },
+  density: { type: String, default: 'comfortable' },
 })
 
 const emit = defineEmits(['error'])
@@ -40,10 +43,10 @@ async function download() {
         v-bind="{ ...tooltip, ...$attrs }"
         :icon="ICONS.DOWNLOAD"
         :size="size"
+        :variant="variant"
+        :density="density"
         :loading="loading"
         :aria-label="label"
-        variant="text"
-        density="comfortable"
         @click.stop="download"
       />
     </template>
