@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { authService } from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth'
+import { usePlayerStore } from '@/stores/player'
 
 vi.mock('@/services/auth.service', () => ({
   authService: { me: vi.fn(), login: vi.fn(), logout: vi.fn(), register: vi.fn() },
@@ -197,25 +198,38 @@ describe('roles', () => {
 
 describe("register", () => {
   it('register and login with same data', async () => {
-  authService.register.mockResolvedValue({})
-  authService.login.mockResolvedValue({ username: 'daniel', roles: ['USER'] })
-  const auth = useAuthStore()
+    authService.register.mockResolvedValue({})
+    authService.login.mockResolvedValue({ username: 'daniel', roles: ['USER'] })
+    const auth = useAuthStore()
 
-  await auth.register({ username: 'daniel', email: 'd@example.com', password: 'Abcdefg1!' })
+    await auth.register({ username: 'daniel', email: 'd@example.com', password: 'Abcdefg1!' })
 
-  expect(authService.register).toHaveBeenCalledOnce()
-  expect(authService.login).toHaveBeenCalledWith({ username: 'daniel', password: 'Abcdefg1!' })
-  expect(auth.isAuthenticated).toBe(true)
-})
-
-it('if error 409 not tries to login', async () => {
-  authService.register.mockRejectedValue(httpError(409))
-  const auth = useAuthStore()
-
-  await expect(auth.register({ username: 'daniel', password: 'x' })).rejects.toMatchObject({
-    response: { status: 409 },
+    expect(authService.register).toHaveBeenCalledOnce()
+    expect(authService.login).toHaveBeenCalledWith({ username: 'daniel', password: 'Abcdefg1!' })
+    expect(auth.isAuthenticated).toBe(true)
   })
-  expect(authService.login).not.toHaveBeenCalled()
-  expect(auth.isAuthenticated).toBe(false)
+
+  it('if error 409 not tries to login', async () => {
+    authService.register.mockRejectedValue(httpError(409))
+    const auth = useAuthStore()
+
+    await expect(auth.register({ username: 'daniel', password: 'x' })).rejects.toMatchObject({
+      response: { status: 409 },
+    })
+    expect(authService.login).not.toHaveBeenCalled()
+    expect(auth.isAuthenticated).toBe(false)
+  })
 })
+
+describe("player", () => {
+  it('stops the player on logout, so private audio does not keep playing', async () => {
+    authService.logout.mockRejectedValue(new Error('Network'))
+    const auth = useAuthStore()
+    const stop = vi.spyOn(usePlayerStore(), 'stop')
+
+    // Even when the request fails, the session ends locally and the player with it
+    await expect(auth.logout()).rejects.toThrow()
+
+    expect(stop).toHaveBeenCalled()
+  })
 })
