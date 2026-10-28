@@ -1,7 +1,11 @@
 <script setup>
+import { ICONS } from '@/constants/icons'
+
 defineProps({
   // Translucent background for placement over artwork
   floating: { type: Boolean, default: false },
+  // Where "Edit" leads. Without it only Delete is offered, e.g. on the release page itself
+  editTo: { type: [Object, String], default: null },
 })
 
 const emit = defineEmits(['delete'])
@@ -21,7 +25,8 @@ const emit = defineEmits(['delete'])
     </template>
 
     <v-list density="compact" min-width="160">
-      <v-list-item prepend-icon="mdi-delete-outline" title="Delete" base-color="error" @click="emit('delete')" />
+      <v-list-item v-if="editTo" :to="editTo" :prepend-icon="ICONS.RENAME" title="Edit" />
+      <v-list-item :prepend-icon="ICONS.DELETE" title="Delete" base-color="error" @click="emit('delete')" />
     </v-list>
   </v-menu>
 </template>

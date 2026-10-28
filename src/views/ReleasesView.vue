@@ -1,18 +1,18 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useRoute, useRouter } from 'vue-router'
 import PageContainer from '@/components/PageContainer.vue'
 import ReleaseCard from '@/components/releases/ReleaseCard.vue'
 import ReleaseList from '@/components/releases/ReleaseList.vue'
 import ReleasesEmptyState from '@/components/releases/ReleasesEmptyState.vue'
 import ReleaseDeleteDialog from '@/components/releases/ReleaseDeleteDialog.vue'
+import ReleaseFiltersBar from '@/components/releases/ReleaseFiltersBar.vue'
+import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
 import { useReleasesStore } from '@/stores/releases'
 import { getReleasePhase } from '@/constants/release-phases'
 import { pluralize } from '@/utils/format'
-import { useRoute, useRouter } from 'vue-router'
-import ReleaseFiltersBar from '@/components/releases/ReleaseFiltersBar.vue'
 import { RELEASE_ROUTE_KEYS, fromReleaseRouteQuery, toReleaseRouteQuery } from '@/models/release'
-import ReleaseCreateDialog from '@/components/releases/ReleaseCreateDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,8 +27,12 @@ const hasRouteState = (query) => RELEASE_ROUTE_KEYS.some((key) => key in query)
 
 const VIEW_STORAGE_KEY = 'cadence.releases.view'
 
+// One card a row on phones, two from tablets up: the cards are horizontal.
+// Used by the skeleton too, so loading looks like what arrives
+const GRID_CLASSES = 'grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4'
+
 const releasesStore = useReleasesStore()
-const { smAndUp } = useDisplay()
+const { smAndUp, mdAndUp } = useDisplay()
 
 const view = ref(readView())
 const createOpen = ref(false)
@@ -40,7 +44,10 @@ const snackbar = ref({ show: false, text: '', color: 'success', to: null })
 const total = computed(() => releasesStore.page.totalElements)
 const showSkeleton = computed(() => releasesStore.loading && !releasesStore.ready)
 const showNoResults = computed(() => releasesStore.ready && total.value === 0 && releasesStore.hasFilters)
-
+const subtitle = computed(() => {
+  if (releasesStore.hasFilters) return `${pluralize(total.value, 'release')} found`
+  return total.value ? `${pluralize(total.value, 'release')} in your catalog` : 'Everything you are planning and have released'
+})
 
 // v-pagination is 1-based, Spring pages are 0-based
 const currentPage = computed({
@@ -114,29 +121,21 @@ watch(currentQuery, (query) => {
 
 <template>
   <PageContainer>
-    <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 class="mb-1 text-2xl font-medium text-on-surface">Releases</h1>
-        <p class="text-on-surface-variant">
-            <template v-if="releasesStore.hasFilters">{{ pluralize(total, 'release') }} found</template>
-            <template v-else>{{ total ? `${pluralize(total, 'release')} in your catalog` : 'Everything you are planning and have released' }}</template>
-        </p>
+    <header class="mb-4 flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-medium text-on-surface">Releases</h1>
+        <div class="text-sm text-on-surface-variant">{{ subtitle }}</div>
       </div>
 
-      <v-btn
-        v-if="!releasesStore.isEmpty"
-        color="primary"
-        prepend-icon="mdi-plus"
-        class="self-start sm:self-auto"
-        @click="createOpen = true"
-      >
-        New release
-      </v-btn>
+      <template v-if="!releasesStore.isEmpty">
+        <v-btn v-if="mdAndUp" color="primary" prepend-icon="mdi-plus" @click="createOpen = true">New release</v-btn>
+        <v-btn v-else color="primary" icon="mdi-plus" size="small" aria-label="New release" @click="createOpen = true" />
+      </template>
     </header>
 
     <!-- Loading -->
-    <div v-if="showSkeleton" class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-      <v-skeleton-loader v-for="n in 8" :key="n" type="image, list-item-two-line" class="rounded-lg" />
+    <div v-if="showSkeleton" :class="GRID_CLASSES">
+      <v-skeleton-loader v-for="n in 6" :key="n" type="list-item-avatar-three-line" class="rounded-lg" />
     </div>
 
     <!-- Error -->
@@ -167,7 +166,7 @@ watch(currentQuery, (query) => {
 
       <!-- Content: previous page stays visible, dimmed, while the next one loads -->
       <div v-else class="transition-opacity" :class="releasesStore.loading && 'pointer-events-none opacity-60'">
-        <div v-if="view === 'grid'" class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <div v-if="view === 'grid'" :class="GRID_CLASSES">
           <ReleaseCard
             v-for="release in releasesStore.releases"
             :key="release.id"

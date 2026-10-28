@@ -3,7 +3,6 @@ import { flushPromises } from '@vue/test-utils'
 import ReleaseActionsMenu from '@/components/releases/ReleaseActionsMenu.vue'
 import { mountWithPlugins } from '@/test-utils/mount'
 
-// Menu content is teleported, so items are found through the component tree
 async function openMenu(props = {}) {
   const wrapper = mountWithPlugins(ReleaseActionsMenu, { props, attachTo: document.body })
   await wrapper.find('button[aria-label="Release actions"]').trigger('click')
@@ -11,29 +10,37 @@ async function openMenu(props = {}) {
   return wrapper
 }
 
-const findItem = (wrapper, title) =>
-  wrapper.findAllComponents({ name: 'VListItem' }).find((item) => item.props('title') === title)
+const item = (wrapper, title) =>
+  wrapper.findAllComponents({ name: 'VListItem' }).find((listItem) => listItem.props('title') === title)
 
 describe('ReleaseActionsMenu', () => {
-  it('emits delete when Delete is clicked', async () => {
+  it('offers Edit as a link to the release when given where it leads', async () => {
+    const wrapper = await openMenu({ editTo: { name: 'release-detail', params: { id: 7 } } })
+
+    expect(item(wrapper, 'Edit').props('to')).toEqual({ name: 'release-detail', params: { id: 7 } })
+    expect(document.body.querySelector('a[href="/releases/7"]')).not.toBeNull()
+  })
+
+  it('offers only Delete without an edit link, e.g. on the release page itself', async () => {
     const wrapper = await openMenu()
 
-    await findItem(wrapper, 'Delete').trigger('click')
+    expect(item(wrapper, 'Edit')).toBeUndefined()
+    expect(item(wrapper, 'Delete')).toBeDefined()
+  })
+
+  it('reports Delete', async () => {
+    const wrapper = await openMenu()
+
+    await item(wrapper, 'Delete').trigger('click')
 
     expect(wrapper.emitted('delete')).toHaveLength(1)
   })
 
-  it('does not emit anything just by opening', async () => {
-    const wrapper = await openMenu()
-
-    expect(wrapper.emitted('delete')).toBeUndefined()
-  })
-
-  it('uses the translucent style when placed over artwork', () => {
-    const floating = mountWithPlugins(ReleaseActionsMenu, { props: { floating: true } })
+  it('gets a translucent background over artwork', () => {
     const plain = mountWithPlugins(ReleaseActionsMenu)
+    const floating = mountWithPlugins(ReleaseActionsMenu, { props: { floating: true } })
 
-    expect(floating.find('button').classes()).toContain('menu-floating')
     expect(plain.find('button').classes()).not.toContain('menu-floating')
+    expect(floating.find('button').classes()).toContain('menu-floating')
   })
 })

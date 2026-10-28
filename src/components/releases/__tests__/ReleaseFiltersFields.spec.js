@@ -89,4 +89,24 @@ describe('ReleaseFiltersFields', () => {
     expect(findByLabel(wrapper, 'VAutocomplete', 'Genre').props('modelValue')).toEqual(['ROCK'])
     expect(findByLabel(wrapper, 'VAutocomplete', 'Artist').props('modelValue')).toBe(nova.id)
   })
+
+  it('offers the sort only when asked: narrow screens move it in here', () => {
+    const plain = mountWithPlugins(ReleaseFiltersFields)
+    const withSort = mountWithPlugins(ReleaseFiltersFields, { props: { withSort: true } })
+
+    const sortField = (wrapper) =>
+      wrapper.findAllComponents({ name: 'VSelect' }).find((select) => select.props('label') === 'Sort by')
+    expect(sortField(plain)).toBeUndefined()
+    expect(sortField(withSort)).toBeDefined()
+  })
+
+  it('changes the sort from the sheet', async () => {
+    const wrapper = mountWithPlugins(ReleaseFiltersFields, { props: { withSort: true } })
+    const sort = wrapper.findAllComponents({ name: 'VSelect' }).find((select) => select.props('label') === 'Sort by')
+
+    sort.vm.$emit('update:modelValue', 'name,asc')
+    await flushPromises()
+
+    expect(useReleasesStore().sort).toBe('name,asc')
+  })
 })

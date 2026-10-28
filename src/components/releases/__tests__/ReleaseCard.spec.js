@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ReleaseCard from '@/components/releases/ReleaseCard.vue'
 import ReleasePhaseMenu from '@/components/releases/ReleasePhaseMenu.vue'
 import ReleaseActionsMenu from '@/components/releases/ReleaseActionsMenu.vue'
+import ReleaseProgress from '@/components/releases/ReleaseProgress.vue'
+import ExplicitBadge from '@/components/common/ExplicitBadge.vue'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeRelease } from '@/test-utils/fixtures/releases'
-import ReleaseProgress from '@/components/releases/ReleaseProgress.vue'
 
 const mountCard = (overrides = {}) => mountWithPlugins(ReleaseCard, { props: { release: makeRelease(overrides) } })
 
@@ -17,55 +18,82 @@ describe('ReleaseCard', () => {
 
   afterEach(() => vi.useRealTimers())
 
-  it('links the title and the Overview button to the release page', () => {
-    const wrapper = mountCard({ id: 7, name: 'Night Drive' })
+  describe('opening the release', () => {
+    it('makes the whole card a link through its title, the only link on the card', () => {
+      const wrapper = mountCard({ id: 7, name: 'Night Drive' })
 
-    const title = wrapper.findAll('a').find((a) => a.text() === 'Night Drive')
-    const overview = wrapper.findAll('a').find((a) => a.text().includes('Overview / Edit'))
+      const links = wrapper.findAll('a')
+      expect(links).toHaveLength(1)
+      expect(links[0].text()).toBe('Night Drive')
+      expect(links[0].attributes('href')).toBe('/releases/7')
+      expect(links[0].classes()).toContain('card-link')
+    })
 
-    expect(title.attributes('href')).toBe('/releases/7')
-    expect(overview.attributes('href')).toBe('/releases/7')
+    it('offers Edit in the actions menu', () => {
+      const wrapper = mountCard({ id: 7 })
+
+      expect(wrapper.findComponent(ReleaseActionsMenu).props('editTo'))
+        .toEqual({ name: 'release-detail', params: { id: 7 } })
+    })
   })
 
-  it('lists artists in order, primary first', () => {
-    const wrapper = mountCard({ artists: [{ id: 2, name: 'Ada' }, { id: 1, name: 'Nova' }] })
+  describe('details', () => {
+    it('lists artists in order, primary first', () => {
+      const wrapper = mountCard({ artists: [{ id: 2, name: 'Ada' }, { id: 1, name: 'Nova' }] })
 
-    expect(wrapper.text()).toContain('Ada, Nova')
+      expect(wrapper.text()).toContain('Ada, Nova')
+    })
+
+    it('says so when the release has no artist', () => {
+      expect(mountCard({ artists: [] }).text()).toContain('No artist yet')
+    })
+
+    it('shows both genres', () => {
+      expect(mountCard({ primaryGenre: 'POP', secondaryGenre: 'ROCK' }).text()).toContain('Pop / Rock')
+    })
+
+    it('counts down to the release date', () => {
+      expect(mountCard({ releaseDate: '2026-10-26' }).text()).toContain('Out in 3 days')
+    })
+
+    it('marks a release with explicit songs', () => {
+      expect(mountCard({ explicit: true }).findComponent(ExplicitBadge).exists()).toBe(true)
+      expect(mountCard({ explicit: false }).findComponent(ExplicitBadge).exists()).toBe(false)
+    })
+
+    it('shows the release progress', () => {
+      const wrapper = mountCard({ songCount: 4, doneSongCount: 1, progressPercent: 44 })
+
+      expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 44, done: 1, total: 4 })
+    })
   })
 
-  it('says so when the release has no artist', () => {
-    expect(mountCard({ artists: [] }).text()).toContain('No artist yet')
-  })
+  describe('actions', () => {
+    it('re-emits a phase change together with the release', () => {
+      const release = makeRelease()
+      const wrapper = mountWithPlugins(ReleaseCard, { props: { release } })
 
-  it('shows both genres', () => {
-    expect(mountCard({ primaryGenre: 'POP', secondaryGenre: 'ROCK' }).text()).toContain('Pop / Rock')
-  })
+      wrapper.findComponent(ReleasePhaseMenu).vm.$emit('change', 'PROMO')
 
-  it('counts down to the release date', () => {
-    expect(mountCard({ releaseDate: '2026-10-26' }).text()).toContain('Out in 3 days')
-  })
+      expect(wrapper.emitted('change-phase')[0]).toEqual([release, 'PROMO'])
+    })
 
-  it('re-emits a phase change together with the release', () => {
-    const release = makeRelease()
-    const wrapper = mountWithPlugins(ReleaseCard, { props: { release } })
+    it('re-emits delete with the release', () => {
+      const release = makeRelease()
+      const wrapper = mountWithPlugins(ReleaseCard, { props: { release } })
 
-    wrapper.findComponent(ReleasePhaseMenu).vm.$emit('change', 'PROMO')
+      wrapper.findComponent(ReleaseActionsMenu).vm.$emit('delete')
 
-    expect(wrapper.emitted('change-phase')[0]).toEqual([release, 'PROMO'])
-  })
+      expect(wrapper.emitted('delete')[0]).toEqual([release])
+    })
 
-  it('re-emits delete with the release', () => {
-    const release = makeRelease()
-    const wrapper = mountWithPlugins(ReleaseCard, { props: { release } })
+    it('keeps its buttons above the card link, so they still work on their own', () => {
+      const wrapper = mountCard()
 
-    wrapper.findComponent(ReleaseActionsMenu).vm.$emit('delete')
-
-    expect(wrapper.emitted('delete')[0]).toEqual([release])
-  })
-
-  it('shows the release progress', () => {
-    const wrapper = mountCard(makeRelease({ songCount: 4, doneSongCount: 1, progressPercent: 44 }))
-
-    expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 44, done: 1, total: 4 })
+      const phaseWrapper = wrapper.findComponent(ReleasePhaseMenu).element.parentElement
+      const menuWrapper = wrapper.findComponent(ReleaseActionsMenu).element.parentElement
+      expect(phaseWrapper.classList).toContain('z-[1]')
+      expect(menuWrapper.classList).toContain('z-[1]')
+    })
   })
 })

@@ -11,6 +11,7 @@ const SEARCH_DEBOUNCE_MS = 300
 const view = defineModel('view', { type: String, default: 'grid' })
 
 const releasesStore = useReleasesStore()
+// Wide screens: one toolbar row. Narrow ones: search and a filters button, the rest in a sheet
 const { mdAndUp } = useDisplay()
 
 const search = ref(releasesStore.filters.q)
@@ -40,8 +41,9 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
 </script>
 
 <template>
-  <div class="mb-4 flex flex-col gap-3">
-    <div class="flex flex-wrap items-center gap-3">
+  <div class="mb-4 flex flex-col gap-2">
+    <!-- Toolbar -->
+    <div class="flex items-center gap-2">
       <v-text-field
         v-model="search"
         placeholder="Search releases"
@@ -49,10 +51,11 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         density="compact"
         hide-details
         clearable
-        class="min-w-48 flex-1 sm:max-w-sm"
+        class="min-w-0 flex-1 md:max-w-sm"
       />
 
       <v-select
+        v-if="mdAndUp"
         :model-value="releasesStore.sort"
         :items="RELEASE_SORTS"
         item-title="label"
@@ -61,26 +64,46 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         density="compact"
         hide-details
         aria-label="Sort releases"
-        class="w-full shrink-0 sm:w-56"
+        class="w-56 shrink-0 grow-0"
         @update:model-value="releasesStore.setSort"
       />
 
-      <v-spacer class="hidden sm:block" />
+      <!-- Height 40: the same as the compact fields next to it -->
+      <v-badge :content="moreCount" :model-value="moreCount > 0" color="primary">
+        <v-btn v-if="mdAndUp" variant="tonal" prepend-icon="mdi-tune-variant" height="40" @click="moreOpen = true">
+          Filters
+          <v-menu v-model="moreOpen" activator="parent" location="bottom end" :close-on-content-click="false">
+            <v-card min-width="340" class="p-4">
+              <ReleaseFiltersFields />
+            </v-card>
+          </v-menu>
+        </v-btn>
+        <v-btn
+          v-else
+          icon="mdi-tune-variant"
+          variant="tonal"
+          rounded="lg"
+          size="40"
+          aria-label="Filters and sorting"
+          @click="moreOpen = true"
+        />
+      </v-badge>
 
+      <v-spacer v-if="mdAndUp" />
       <v-btn-toggle v-model="view" mandatory divided density="compact" variant="outlined">
         <v-btn value="grid" icon="mdi-view-grid-outline" aria-label="Grid view" />
         <v-btn value="list" icon="mdi-view-list-outline" aria-label="List view" />
       </v-btn-toggle>
     </div>
 
+    <!-- Phases: one row, scrolls sideways on narrow screens instead of wrapping -->
     <div class="flex items-center gap-2">
-      <!-- Scrolls horizontally on narrow screens instead of wrapping -->
       <div class="min-w-0 flex-1 overflow-x-auto">
         <v-chip-group
           :model-value="releasesStore.filters.phase"
           multiple
           filter
-          class="flex-nowrap"
+          class="flex-nowrap py-0"
           aria-label="Filter by phase"
           @update:model-value="(phase) => releasesStore.setFilters({ phase })"
         >
@@ -97,33 +120,16 @@ onBeforeUnmount(() => clearTimeout(searchTimer))
         </v-chip-group>
       </div>
 
-      <v-badge :content="moreCount" :model-value="moreCount > 0" color="primary">
-        <v-btn variant="tonal" prepend-icon="mdi-tune-variant" @click="moreOpen = true">
-          Filters
-          <v-menu
-            v-if="mdAndUp"
-            v-model="moreOpen"
-            activator="parent"
-            location="bottom end"
-            :close-on-content-click="false"
-          >
-            <v-card min-width="340" class="p-4">
-              <ReleaseFiltersFields />
-            </v-card>
-          </v-menu>
-        </v-btn>
-      </v-badge>
-
-      <v-btn v-if="releasesStore.hasFilters" variant="text" @click="releasesStore.clearFilters()">Clear</v-btn>
+      <v-btn v-if="releasesStore.hasFilters" variant="text" size="small" @click="releasesStore.clearFilters()">Clear</v-btn>
     </div>
 
     <v-bottom-sheet v-if="!mdAndUp" v-model="moreOpen">
       <v-card class="p-4">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="text-lg font-medium text-on-surface">Filters</h2>
+          <h2 class="text-lg font-medium text-on-surface">Filters and sorting</h2>
           <v-btn variant="text" @click="moreOpen = false">Done</v-btn>
         </div>
-        <ReleaseFiltersFields />
+        <ReleaseFiltersFields with-sort />
       </v-card>
     </v-bottom-sheet>
   </div>
