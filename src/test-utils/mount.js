@@ -7,7 +7,6 @@ const routes = [
   { path: '/artists', name: 'artists', component: RouteStub },
   { path: '/artists/:id', name: 'artist-detail', component: RouteStub },
   { path: '/releases', name: 'releases', component: RouteStub },
-  { path: '/releases', name: 'releases', component: RouteStub },
   {
     path: '/releases/:id',
     component: RouteStub,
