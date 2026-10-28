@@ -2,7 +2,9 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import CopyButton from '@/components/common/CopyButton.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
+import SongFilesSection from '@/components/songs/SongFilesSection.vue'
 import { SONG_STATUSES, getSongStatus } from '@/constants/song-statuses'
+import { ICONS } from '@/constants/icons'
 import { songService } from '@/services/song.service'
 import { useSubmit } from '@/composables/useSubmit'
 import { createSongForm, toSongRequest } from '@/models/song'
@@ -12,13 +14,15 @@ const open = defineModel({ type: Boolean, default: false })
 
 const props = defineProps({
   releaseId: { type: Number, required: true },
+  // The release the song belongs to: the player shows its name and cover
+  release: { type: Object, default: null },
   // null: a new song
   song: { type: Object, default: null },
   // Opened from "Edit" in the row menu: skip the read view
   startInEdit: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['saved', 'delete'])
+const emit = defineEmits(['saved', 'delete', 'files-changed'])
 
 const mode = ref('view')
 const form = ref(createSongForm())
@@ -118,7 +122,7 @@ function requestDelete() {
           </p>
           <p class="truncate">{{ heading }}</p>
         </div>
-        <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" :disabled="loading" @click="open = false" />
+        <v-btn :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close" :disabled="loading" @click="open = false" />
       </v-card-title>
 
       <!-- Read view -->
@@ -143,7 +147,18 @@ function requestDelete() {
           <span v-else class="text-on-surface-variant">Not set</span>
         </div>
 
-        <p class="mb-2 mt-5 text-xs uppercase tracking-wider text-on-surface-variant">Lyrics</p>
+        <SongFilesSection
+          v-if="release"
+          class="mt-5"
+          :release="release"
+          :song="song"
+          @changed="emit('files-changed')"
+        />
+
+        <div class="mb-2 mt-5 flex items-center justify-between">
+          <p class="text-xs uppercase tracking-wider text-on-surface-variant">Lyrics</p>
+          <CopyButton v-if="song.lyrics" :text="song.lyrics" label="Copy lyrics" />
+        </div>
         <ExpandableText :text="song.lyrics" :lines="8" placeholder="No lyrics yet." class="text-on-surface" />
       </v-card-text>
 
@@ -211,10 +226,10 @@ function requestDelete() {
       <v-card-actions class="gap-2 px-4 pb-4 sm:px-6">
         <template v-if="mode === 'view'">
           <!-- Destructive action on the left, away from the main button -->
-          <v-btn color="error" variant="text" prepend-icon="mdi-delete-outline" @click="requestDelete">Delete</v-btn>
+          <v-btn color="error" variant="text" :prepend-icon="ICONS.DELETE" @click="requestDelete">Delete</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="open = false">Close</v-btn>
-          <v-btn color="primary" variant="flat" prepend-icon="mdi-pencil-outline" @click="startEdit">Edit</v-btn>
+          <v-btn color="primary" variant="flat" :prepend-icon="ICONS.RENAME" @click="startEdit">Edit</v-btn>
         </template>
         <template v-else>
           <v-spacer />

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import SongDialog from '@/components/songs/SongDialog.vue'
+import SongFilesSection from '@/components/songs/SongFilesSection.vue'
 import CopyButton from '@/components/common/CopyButton.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
 import { songService } from '@/services/song.service'
@@ -8,8 +9,10 @@ import { mountWithPlugins } from '@/test-utils/mount'
 import { makeSong } from '@/test-utils/fixtures/songs'
 
 vi.mock('@/services/song.service', () => ({
-  songService: { create: vi.fn(), replace: vi.fn() },
+  songService: { create: vi.fn(), replace: vi.fn(), getFiles: vi.fn().mockResolvedValue([]) },
 }))
+
+const RELEASE = { id: 42, name: 'Neon Siesta', artworkUrl: null }
 
 const SONG = makeSong({
   id: 71, trackNumber: 2, durationSeconds: 215, isrc: 'USABC2600001',
@@ -36,6 +39,8 @@ const field = (wrapper, label) =>
 const button = (wrapper, text) =>
   wrapper.findAllComponents({ name: 'VBtn' }).find((btn) => btn.text() === text)
 
+const copyButton = (wrapper, label) =>
+  wrapper.findAllComponents(CopyButton).find((copy) => copy.props('label') === label)
 
 async function fill(wrapper, label, value) {
   field(wrapper, label).vm.$emit('update:modelValue', value)
@@ -59,7 +64,7 @@ describe('SongDialog', () => {
       expect(text).toContain('3:35')
       expect(text).toContain('US-ABC-26-00001')
       expect(text).toContain('Explicit')
-      expect(wrapper.findComponent(CopyButton).props('text')).toBe('USABC2600001')
+      expect(copyButton(wrapper, 'Copy ISRC').props('text')).toBe('USABC2600001')
       expect(wrapper.findComponent(ExpandableText).props()).toMatchObject({ text: 'Neon on the windshield', lines: 8 })
     })
 
@@ -89,7 +94,45 @@ describe('SongDialog', () => {
     it('does not offer Delete in the form', async () => {
       const wrapper = await openDialog({ song: SONG, startInEdit: true })
 
+      // Guard: the lookup itself works inside the dialog, so "undefined" below means "absent"
+      expect(button(wrapper, 'Save')).toBeDefined()
       expect(button(wrapper, 'Delete')).toBeUndefined()
+    })
+  })
+
+  describe('files and lyrics', () => {
+    it('shows the files of the song when the release is known', async () => {
+      const wrapper = await openDialog({ song: SONG, release: RELEASE })
+
+      const files = wrapper.findComponent(SongFilesSection)
+      expect(files.props()).toMatchObject({ release: RELEASE, song: SONG })
+      expect(songService.getFiles).toHaveBeenCalledWith(42, 71)
+    })
+
+    it('has no file section without the release: the player needs it', async () => {
+      const wrapper = await openDialog({ song: SONG })
+
+      expect(wrapper.findComponent(SongFilesSection).exists()).toBe(false)
+    })
+
+    it('reports file changes so the tracklist can refresh', async () => {
+      const wrapper = await openDialog({ song: SONG, release: RELEASE })
+
+      wrapper.findComponent(SongFilesSection).vm.$emit('changed')
+
+      expect(wrapper.emitted('files-changed')).toHaveLength(1)
+    })
+
+    it('lets the lyrics be copied', async () => {
+      const wrapper = await openDialog({ song: SONG })
+
+      expect(copyButton(wrapper, 'Copy lyrics').props('text')).toBe('Neon on the windshield')
+    })
+
+    it('offers no copy button without lyrics', async () => {
+      const wrapper = await openDialog({ song: { ...SONG, lyrics: '' } })
+
+      expect(copyButton(wrapper, 'Copy lyrics')).toBeUndefined()
     })
   })
 
@@ -128,7 +171,7 @@ describe('SongDialog', () => {
 
   describe('editing', () => {
     it('opens straight into the form from the row menu', async () => {
-      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await openDialog({ song: SONG, startInEdit: true })
 
       expect(document.body.textContent).toContain('Edit song')
     })
