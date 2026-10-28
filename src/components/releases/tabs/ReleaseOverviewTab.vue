@@ -35,7 +35,7 @@ const ERROR_MESSAGES = {
 const rules = {
   name: [(v) => !!v?.trim() || 'Name is required', (v) => (v?.length ?? 0) <= 150 || 'Max 150 characters'],
   primaryGenre: [(v) => !!v || 'Primary genre is required'],
-  notes: [(v) => (v?.length ?? 0) <= 1024 || 'Max 1024 characters'],
+  notes: [(v) => (v?.length ?? 0) <= 10_000 || 'Max 10000 characters'],
 }
 
 // ---------- Values the editors start from ----------
@@ -190,7 +190,7 @@ const ISO_DATE_RULE = (draft) => () =>
             <v-textarea
               :model-value="draft"
               :rules="rules.notes"
-              counter="1024"
+              counter="10000"
               :rows="lgAndUp ? 12 : 3"
               auto-grow
               @update:model-value="set"

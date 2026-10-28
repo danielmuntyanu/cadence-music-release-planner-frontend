@@ -152,8 +152,8 @@ describe('ReleaseOverviewTab', () => {
       const wrapper = mountTab({ notes: 'Old' })
       const input = (await openEditor(wrapper, 'Notes')).findComponent({ name: 'VTextarea' })
 
-      expect(validate(input, 'x'.repeat(1025))).toBe('Max 1024 characters')
-      expect(validate(input, 'x'.repeat(1024))).toBe(true)
+      expect(validate(input, 'x'.repeat(10001))).toBe('Max 10000 characters')
+      expect(validate(input, 'x'.repeat(10000))).toBe(true)
     })
 
     describe('dates', () => {

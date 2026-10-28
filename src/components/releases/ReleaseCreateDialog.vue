@@ -176,7 +176,7 @@ async function onSubmit() {
               class="sm:col-span-2"
             />
           </div>
-          <v-textarea v-model="release.notes" label="Notes" :rules="rules.notes" counter="1024" rows="2" auto-grow class="mt-2" />
+          <v-textarea v-model="release.notes" label="Notes" :rules="rules.notes" counter="10000" rows="2" auto-grow class="mt-2" />
         </v-form>
 
         <v-alert v-if="error" type="error" variant="tonal" density="compact" :text="error" />
