@@ -29,12 +29,16 @@ const mode = ref('view')
 const form = ref(createSongForm())
 const formRef = ref(null)
 const titleField = ref(null)
+const lyricsField = ref(null)
+// The lyrics field takes over a nearly full-screen dialog; the other fields stay mounted, only hidden
+const lyricsExpanded = ref(false)
 const statusSaving = ref(false)
 const statusError = ref(null)
 
 const isNew = computed(() => !props.song)
 const heading = computed(() => {
   if (mode.value === 'view') return props.song?.title
+  if (lyricsExpanded.value) return form.value.title.trim() || 'Lyrics'
   return isNew.value ? 'Add song' : 'Edit song'
 })
 
@@ -55,25 +59,31 @@ const rules = {
   lyrics: [(v) => v.length <= 20_000 || 'Max 20000 characters'],
 }
 
-async function focusTitle() {
+/** Moves the cursor into a field of the form and brings it into view */
+async function focusField(field) {
   await nextTick()
-  titleField.value?.focus()
+  const target = field === 'lyrics' ? lyricsField.value : titleField.value
+  target?.focus()
+  target?.$el?.scrollIntoView?.({ block: 'center' })
 }
 
 watch(open, (isOpen) => {
   if (!isOpen) return
   error.value = null
   statusError.value = null
+  lyricsExpanded.value = false
   form.value = createSongForm(props.song)
   mode.value = isNew.value || props.startInEdit ? 'edit' : 'view'
-  if (mode.value === 'edit') focusTitle()
+  if (mode.value === 'edit') focusField('title')
 })
 
-function startEdit() {
+/** @param {'title' | 'lyrics'} [field] where the cursor lands: the title, or straight in the lyrics */
+function startEdit(field = 'title') {
   form.value = createSongForm(props.song)
   error.value = null
+  lyricsExpanded.value = false
   mode.value = 'edit'
-  focusTitle()
+  focusField(field)
 }
 
 /** From the read view: back to it. Opened straight into the form: close */
@@ -86,9 +96,31 @@ function cancel() {
   }
 }
 
+function expandLyrics() {
+  lyricsExpanded.value = true
+  focusField('lyrics')
+}
+
+function collapseLyrics() {
+  lyricsExpanded.value = false
+  focusField('lyrics')
+}
+
+/** Esc first leaves the expanded editor; only the next Esc reaches the dialog and closes it */
+function onKeydown(event) {
+  if (event.key !== 'Escape' || !lyricsExpanded.value) return
+  event.stopPropagation()
+  event.preventDefault()
+  collapseLyrics()
+}
+
 async function save() {
   const { valid } = await formRef.value.validate()
-  if (!valid) return
+  if (!valid) {
+    // A problem in a hidden field must not stay invisible
+    lyricsExpanded.value = false
+    return
+  }
 
   const payload = toSongRequest(form.value)
   const created = isNew.value
@@ -128,19 +160,44 @@ function requestDelete() {
 </script>
 
 <template>
-  <v-dialog v-model="open" max-width="640" scrollable :persistent="loading">
-    <v-card>
+  <v-dialog
+    v-model="open"
+    :max-width="lyricsExpanded ? 1100 : 640"
+    :height="lyricsExpanded ? '100%' : undefined"
+    scrollable
+    :persistent="loading"
+  >
+    <v-card @keydown.capture="onKeydown">
       <v-card-title class="flex items-start gap-2 px-4 pt-4 sm:px-6">
         <div class="min-w-0 flex-1">
           <p
-            v-if="mode === 'view' && song"
+            v-if="(mode === 'view' && song) || lyricsExpanded"
             class="text-xs font-medium uppercase tracking-widest text-on-surface-variant"
           >
-            Track {{ song.trackNumber }}
+            {{ lyricsExpanded ? 'Lyrics' : `Track ${song.trackNumber}` }}
           </p>
-          <p class="truncate">{{ heading }}</p>
+          <div class="flex min-w-0 items-center gap-1">
+            <p class="truncate">{{ heading }}</p>
+            <v-btn
+              v-if="mode === 'view' && song"
+              :icon="ICONS.RENAME"
+              variant="text"
+              size="small"
+              density="comfortable"
+              aria-label="Edit song"
+              @click="startEdit('title')"
+            />
+          </div>
         </div>
-        <v-btn :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close" :disabled="loading" @click="open = false" />
+        <v-btn
+          v-if="lyricsExpanded"
+          :icon="ICONS.COLLAPSE"
+          variant="text"
+          size="small"
+          aria-label="Back to the whole form"
+          @click="collapseLyrics"
+        />
+        <v-btn v-else :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close" :disabled="loading" @click="open = false" />
       </v-card-title>
 
       <!-- Read view: what people work with first (files, lyrics), then the reference details -->
@@ -161,7 +218,17 @@ function requestDelete() {
 
         <div class="mb-2 mt-5 flex items-center justify-between">
           <p class="text-xs uppercase tracking-wider text-on-surface-variant">Lyrics</p>
-          <CopyButton v-if="song.lyrics" :text="song.lyrics" label="Copy lyrics" />
+          <div class="flex items-center">
+            <CopyButton v-if="song.lyrics" :text="song.lyrics" label="Copy lyrics" />
+            <v-btn
+              :icon="ICONS.RENAME"
+              :aria-label="song.lyrics ? 'Edit lyrics' : 'Add lyrics'"
+              variant="text"
+              size="x-small"
+              density="comfortable"
+              @click="startEdit('lyrics')"
+            />
+          </div>
         </div>
         <ExpandableText :text="song.lyrics" :lines="8" placeholder="No lyrics yet." class="text-on-surface" />
 
@@ -182,10 +249,11 @@ function requestDelete() {
         </div>
       </v-card-text>
 
-      <!-- Form -->
-      <v-card-text v-else class="px-4 pb-2 pt-2 sm:px-6">
-        <v-form id="song-form" ref="formRef" @submit.prevent="save">
+      <!-- Form: the fields hidden while the lyrics are expanded keep what was typed -->
+      <v-card-text v-else class="px-4 pb-2 pt-2 sm:px-6" :class="lyricsExpanded && 'lyrics-expanded'">
+        <v-form id="song-form" ref="formRef" class="flex h-full flex-col" @submit.prevent="save">
           <v-text-field
+            v-show="!lyricsExpanded"
             ref="titleField"
             v-model="form.title"
             label="Title"
@@ -193,52 +261,68 @@ function requestDelete() {
             counter="150"
           />
 
-          <div class="grid gap-x-4 sm:grid-cols-2">
-            <v-text-field
-              v-model="form.duration"
-              label="Length"
-              placeholder="3:35"
-              hint="m:ss or h:mm:ss"
-              persistent-hint
-              prepend-inner-icon="mdi-clock-outline"
-              :rules="rules.duration"
-            />
-            <v-select
-              v-model="form.status"
-              :items="SONG_STATUSES"
-              item-title="label"
-              item-value="value"
-              label="Status"
-            >
-              <!-- Vuetify 4: `item` is the option itself (the wrapper is `internalItem`) -->
-              <template #item="{ props: itemProps, item }">
-                <v-list-item v-bind="itemProps" :prepend-icon="item.icon" :base-color="item.color" />
-              </template>
-            </v-select>
-          </div>
-
-          <v-text-field
-            :model-value="form.isrc"
-            label="ISRC"
-            placeholder="US-ABC-26-00001"
-            hint="Optional. The code your distributor assigned to this recording"
-            persistent-hint
-            class="isrc-field mt-2"
-            :rules="rules.isrc"
-            @update:model-value="(value) => (form.isrc = value.toUpperCase())"
-          />
-
-          <v-switch v-model="form.explicit" label="Explicit lyrics" color="primary" inset hide-details class="my-2" />
-
           <v-textarea
+            ref="lyricsField"
             v-model="form.lyrics"
             label="Lyrics"
             :rules="rules.lyrics"
             counter="20000"
-            rows="4"
-            max-rows="14"
-            auto-grow
-          />
+            :rows="lyricsExpanded ? 20 : 4"
+            :max-rows="lyricsExpanded ? undefined : 14"
+            :auto-grow="!lyricsExpanded"
+            :no-resize="lyricsExpanded"
+            class="lyrics-field"
+          >
+            <template v-if="!lyricsExpanded" #append-inner>
+              <v-btn
+                :icon="ICONS.EXPAND"
+                variant="text"
+                size="x-small"
+                density="comfortable"
+                aria-label="Expand the lyrics editor"
+                @click.stop="expandLyrics"
+              />
+            </template>
+          </v-textarea>
+
+          <div v-show="!lyricsExpanded">
+            <v-switch v-model="form.explicit" label="Explicit lyrics" color="primary" inset hide-details class="mb-2" />
+
+            <div class="grid gap-x-4 sm:grid-cols-2">
+              <v-text-field
+                v-model="form.duration"
+                label="Length"
+                placeholder="3:35"
+                hint="m:ss or h:mm:ss"
+                persistent-hint
+                prepend-inner-icon="mdi-clock-outline"
+                :rules="rules.duration"
+              />
+              <v-select
+                v-model="form.status"
+                :items="SONG_STATUSES"
+                item-title="label"
+                item-value="value"
+                label="Status"
+              >
+                <!-- Vuetify 4: `item` is the option itself (the wrapper is `internalItem`) -->
+                <template #item="{ props: itemProps, item }">
+                  <v-list-item v-bind="itemProps" :prepend-icon="item.icon" :base-color="item.color" />
+                </template>
+              </v-select>
+            </div>
+
+            <v-text-field
+              :model-value="form.isrc"
+              label="ISRC"
+              placeholder="US-ABC-26-00001"
+              hint="Optional. The code your distributor assigned to this recording"
+              persistent-hint
+              class="isrc-field mt-2"
+              :rules="rules.isrc"
+              @update:model-value="(value) => (form.isrc = value.toUpperCase())"
+            />
+          </div>
 
           <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mt-2" :text="error" />
         </v-form>
@@ -250,11 +334,14 @@ function requestDelete() {
           <v-btn color="error" variant="text" :prepend-icon="ICONS.DELETE" @click="requestDelete">Delete</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="open = false">Close</v-btn>
-          <v-btn color="primary" variant="flat" :prepend-icon="ICONS.RENAME" @click="startEdit">Edit</v-btn>
+          <v-btn color="primary" variant="flat" :prepend-icon="ICONS.RENAME" @click="startEdit('title')">Edit</v-btn>
         </template>
         <template v-else>
           <v-spacer />
-          <v-btn variant="text" :disabled="loading" @click="cancel">Cancel</v-btn>
+          <v-btn v-if="lyricsExpanded" variant="text" :prepend-icon="ICONS.COLLAPSE" :disabled="loading" @click="collapseLyrics">
+            Back to form
+          </v-btn>
+          <v-btn v-else variant="text" :disabled="loading" @click="cancel">Cancel</v-btn>
           <!-- Outside the form element, linked to it by id, so Enter in a field also saves -->
           <v-btn type="submit" form="song-form" color="primary" variant="flat" :loading="loading">
             {{ isNew ? 'Add song' : 'Save' }}
@@ -278,5 +365,20 @@ function requestDelete() {
 .isrc-field :deep(input) {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.02em;
+}
+
+/* Expanded: the lyrics field fills the dialog instead of growing line by line */
+.lyrics-expanded .lyrics-field {
+  flex: 1;
+}
+
+.lyrics-expanded .lyrics-field :deep(.v-input__control),
+.lyrics-expanded .lyrics-field :deep(.v-field) {
+  height: 100%;
+}
+
+.lyrics-expanded .lyrics-field :deep(textarea) {
+  height: 100% !important;
+  line-height: 1.7;
 }
 </style>

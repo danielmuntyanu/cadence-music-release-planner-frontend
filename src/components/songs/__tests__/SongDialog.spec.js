@@ -2,15 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import SongDialog from '@/components/songs/SongDialog.vue'
 import SongFilesSection from '@/components/songs/SongFilesSection.vue'
+import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 import CopyButton from '@/components/common/CopyButton.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
 import { songService } from '@/services/song.service'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeSong } from '@/test-utils/fixtures/songs'
-import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 
 vi.mock('@/services/song.service', () => ({
-  songService: { create: vi.fn(), replace: vi.fn(), updateStatus: vi.fn(), getFiles: vi.fn().mockResolvedValue([]) },
+  songService: {
+    create: vi.fn(),
+    replace: vi.fn(),
+    updateStatus: vi.fn(),
+    // The file section loads the song's files when the dialog opens with a release
+    getFiles: vi.fn().mockResolvedValue([]),
+  },
 }))
 
 const RELEASE = { id: 42, name: 'Neon Siesta', artworkUrl: null }
@@ -19,6 +25,8 @@ const SONG = makeSong({
   id: 71, trackNumber: 2, durationSeconds: 215, isrc: 'USABC2600001',
   status: 'RECORDING', lyrics: 'Neon on the windshield', explicit: true,
 })
+
+// ---------- Helpers ----------
 
 async function openDialog(props = {}) {
   const wrapper = mountWithPlugins(SongDialog, {
@@ -33,6 +41,8 @@ async function openDialog(props = {}) {
 const field = (wrapper, label) =>
   wrapper.findAllComponents({ name: 'VTextField' }).find((f) => f.props('label') === label)
 
+const lyrics = (wrapper) => wrapper.findComponent({ name: 'VTextarea' })
+
 /**
  * v-dialog teleports its content to document.body, so DOM queries on the wrapper miss it.
  * The component tree still contains it: search VBtn components by their text.
@@ -40,8 +50,17 @@ const field = (wrapper, label) =>
 const button = (wrapper, text) =>
   wrapper.findAllComponents({ name: 'VBtn' }).find((btn) => btn.text() === text)
 
+/** Icon-only buttons have no text: find them by their accessible name */
+const iconButton = (label) => document.body.querySelector(`button[aria-label="${label}"]`)
+
 const copyButton = (wrapper, label) =>
   wrapper.findAllComponents(CopyButton).find((copy) => copy.props('label') === label)
+
+/** Field labels in the order they appear; Vuetify also renders a floating copy of each, kept once */
+function labelsInForm() {
+  const labels = [...document.body.querySelectorAll('.v-dialog .v-label')].map((label) => label.textContent.trim())
+  return labels.filter((label, index) => label && labels.indexOf(label) === index)
+}
 
 async function fill(wrapper, label, value) {
   field(wrapper, label).vm.$emit('update:modelValue', value)
@@ -52,6 +71,13 @@ async function submitForm(wrapper) {
   await wrapper.findComponent({ name: 'VForm' }).trigger('submit')
   await flushPromises()
 }
+
+async function clickIcon(label) {
+  iconButton(label).click()
+  await flushPromises()
+}
+
+// ---------- Tests ----------
 
 describe('SongDialog', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -134,6 +160,139 @@ describe('SongDialog', () => {
       const wrapper = await openDialog({ song: { ...SONG, lyrics: '' } })
 
       expect(copyButton(wrapper, 'Copy lyrics')).toBeUndefined()
+    })
+  })
+
+  describe('status from the read view', () => {
+    it('saves a new status at once and keeps the dialog open', async () => {
+      const updated = { ...SONG, status: 'DONE' }
+      songService.updateStatus.mockResolvedValue(updated)
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(songService.updateStatus).toHaveBeenCalledWith(42, 71, 'DONE')
+      expect(wrapper.emitted('saved')).toEqual([[updated, { created: false }]])
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+
+    it('shows the status as saving meanwhile', async () => {
+      songService.updateStatus.mockReturnValue(new Promise(() => {}))
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SongStatusMenu).props('loading')).toBe(true)
+    })
+
+    it('explains a failed change and reports nothing', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      songService.updateStatus.mockRejectedValue(new Error('Network'))
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('Could not change the status. Try again.')
+      expect(wrapper.emitted('saved')).toBeUndefined()
+    })
+  })
+
+  describe('status options in the form', () => {
+    it('renders every status with its icon and color', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      const select = wrapper.findAllComponents({ name: 'VSelect' }).find((s) => s.props('label') === 'Status')
+
+      await select.find('.v-field').trigger('mousedown')
+      await flushPromises()
+
+      // Opening the list used to crash on item.raw with Vuetify 4
+      const items = wrapper.findAllComponents({ name: 'VListItem' })
+      const recording = items.find((item) => item.props('title') === 'Recording')
+      expect(recording.props()).toMatchObject({ prependIcon: 'mdi-microphone-outline', baseColor: 'warning' })
+    })
+  })
+
+  describe('quick editing and the lyrics editor', () => {
+    it('orders the form: title, lyrics, explicit, length and status, ISRC last', async () => {
+      await openDialog({ song: SONG, startInEdit: true })
+
+      expect(labelsInForm()).toEqual(['Title', 'Lyrics', 'Explicit lyrics', 'Length', 'Status', 'ISRC'])
+    })
+
+    it('the pencil next to the title opens the form in the title', async () => {
+      const wrapper = await openDialog({ song: SONG })
+
+      await clickIcon('Edit song')
+
+      expect(field(wrapper, 'Title').props('modelValue')).toBe('Night Drive')
+      expect(document.activeElement).toBe(field(wrapper, 'Title').find('input').element)
+    })
+
+    it('the pencil next to the lyrics opens the form in the lyrics', async () => {
+      const wrapper = await openDialog({ song: SONG })
+
+      await clickIcon('Edit lyrics')
+
+      expect(document.activeElement).toBe(lyrics(wrapper).find('textarea').element)
+    })
+
+    it('offers to add lyrics when there are none', async () => {
+      await openDialog({ song: { ...SONG, lyrics: '' } })
+
+      expect(iconButton('Add lyrics')).not.toBeNull()
+    })
+
+    it('expands the lyrics, hiding the other fields but keeping what was typed', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await fill(wrapper, 'Title', 'Night Drive (Edit)')
+
+      await clickIcon('Expand the lyrics editor')
+
+      expect(field(wrapper, 'Title').isVisible()).toBe(false)
+      expect(lyrics(wrapper).isVisible()).toBe(true)
+      expect(wrapper.findComponent({ name: 'VDialog' }).props('maxWidth')).toBe(1100)
+      expect(document.body.textContent).toContain('Night Drive (Edit)')
+
+      await button(wrapper, 'Back to form').trigger('click')
+      await flushPromises()
+      expect(field(wrapper, 'Title').props('modelValue')).toBe('Night Drive (Edit)')
+      expect(field(wrapper, 'Title').isVisible()).toBe(true)
+    })
+
+    it('Esc leaves the expanded editor first, without closing the dialog', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await clickIcon('Expand the lyrics editor')
+
+      await lyrics(wrapper).find('textarea').trigger('keydown', { key: 'Escape' })
+      await flushPromises()
+
+      expect(field(wrapper, 'Title').isVisible()).toBe(true)
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+
+    it('saves from the expanded editor', async () => {
+      songService.replace.mockResolvedValue({ ...SONG, lyrics: 'New verse' })
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await clickIcon('Expand the lyrics editor')
+
+      lyrics(wrapper).vm.$emit('update:modelValue', 'New verse')
+      await submitForm(wrapper)
+
+      expect(songService.replace).toHaveBeenCalledWith(42, 71, expect.objectContaining({ lyrics: 'New verse' }))
+    })
+
+    it('shows the whole form again when a hidden field is invalid', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await fill(wrapper, 'ISRC', 'NOT-AN-ISRC')
+      await clickIcon('Expand the lyrics editor')
+
+      await submitForm(wrapper)
+
+      expect(songService.replace).not.toHaveBeenCalled()
+      expect(field(wrapper, 'ISRC').isVisible()).toBe(true)
     })
   })
 
@@ -220,58 +379,6 @@ describe('SongDialog', () => {
       await submitForm(wrapper)
 
       expect(songService.replace).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('status from the read view', () => {
-    it('saves a new status at once and keeps the dialog open', async () => {
-      const updated = { ...SONG, status: 'DONE' }
-      songService.updateStatus.mockResolvedValue(updated)
-      const wrapper = await openDialog({ song: SONG })
-
-      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
-      await flushPromises()
-
-      expect(songService.updateStatus).toHaveBeenCalledWith(42, 71, 'DONE')
-      expect(wrapper.emitted('saved')).toEqual([[updated, { created: false }]])
-      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
-    })
-
-    it('shows the status as saving meanwhile', async () => {
-      songService.updateStatus.mockReturnValue(new Promise(() => {}))
-      const wrapper = await openDialog({ song: SONG })
-
-      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
-      await flushPromises()
-
-      expect(wrapper.findComponent(SongStatusMenu).props('loading')).toBe(true)
-    })
-
-    it('explains a failed change and reports nothing', async () => {
-      vi.spyOn(console, 'error').mockImplementation(() => {})
-      songService.updateStatus.mockRejectedValue(new Error('Network'))
-      const wrapper = await openDialog({ song: SONG })
-
-      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
-      await flushPromises()
-
-      expect(document.body.textContent).toContain('Could not change the status. Try again.')
-      expect(wrapper.emitted('saved')).toBeUndefined()
-    })
-  })
-
-  describe('status options in the form', () => {
-    it('renders every status with its icon and color', async () => {
-      const wrapper = await openDialog({ song: SONG, startInEdit: true })
-      const select = wrapper.findAllComponents({ name: 'VSelect' }).find((s) => s.props('label') === 'Status')
-
-      await select.find('.v-field').trigger('mousedown')
-      await flushPromises()
-
-      // Opening the list used to crash on item.raw with Vuetify 4
-      const items = wrapper.findAllComponents({ name: 'VListItem' })
-      const recording = items.find((item) => item.props('title') === 'Recording')
-      expect(recording.props()).toMatchObject({ prependIcon: 'mdi-microphone-outline', baseColor: 'warning' })
     })
   })
 })

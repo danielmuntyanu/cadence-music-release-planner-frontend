@@ -17,6 +17,8 @@ export const ICONS = Object.freeze({
   PRIMARY: 'mdi-heart',
   NOT_PRIMARY: 'mdi-heart-outline',
   RENAME: 'mdi-pencil-outline',
+  EXPAND: 'mdi-arrow-expand',
+  COLLAPSE: 'mdi-arrow-collapse',
   DELETE: 'mdi-delete-outline',
   CLOSE: 'mdi-close',
   AUDIO: 'mdi-waveform',
