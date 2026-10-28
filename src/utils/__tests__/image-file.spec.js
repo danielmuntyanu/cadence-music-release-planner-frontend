@@ -16,8 +16,13 @@ describe('validateImageFile', () => {
     expect(validateImageFile(fileOf(type))).toBe('Use a JPEG, PNG or WebP image.')
   })
 
+  it('allows covers large enough for distributors', () => {
+    // A 3000 × 3000 PNG often weighs 15–25 MB
+    expect(validateImageFile(fileOf('image/png', 25 * 1024 * 1024))).toBeNull()
+  })
+
   it('rejects files over the limit and names the limit', () => {
-    expect(validateImageFile(fileOf('image/png', MAX_IMAGE_BYTES + 1))).toBe('The image is larger than 10 MB.')
+    expect(validateImageFile(fileOf('image/png', MAX_IMAGE_BYTES + 1))).toBe('The image is larger than 30 MB.')
   })
 
   it('accepts a file exactly at the limit', () => {
@@ -37,7 +42,7 @@ describe('formatBytes', () => {
   it.each([
     [512 * 1024, '512 KB'],
     [2.5 * 1024 * 1024, '2.5 MB'],
-    [10 * 1024 * 1024, '10 MB'],
+    [30 * 1024 * 1024, '30 MB'],
   ])('%i bytes is "%s"', (bytes, label) => {
     expect(formatBytes(bytes)).toBe(label)
   })

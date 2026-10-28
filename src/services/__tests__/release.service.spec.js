@@ -111,6 +111,14 @@ describe('releaseService', () => {
     expect(release.artworkUrl).toBeNull()
   })
 
+  it('artworkDownloadLink returns the link as the server sent it', async () => {
+    const link = { url: 'https://storage.test/cover.png', expiresAt: '2026-10-28T12:05:00Z' }
+    api.get.mockResolvedValue({ data: link })
+
+    expect(await releaseService.artworkDownloadLink(7)).toEqual(link)
+    expect(api.get).toHaveBeenCalledWith('/releases/7/artwork/download')
+  })
+
   it('delete sends a DELETE for the release id', async () => {
     api.delete.mockResolvedValue({ status: 204 })
 
@@ -129,6 +137,7 @@ describe('releaseService', () => {
       ['updateDates', 'put', [7, { releaseDate: null, originalReleaseDate: null }]],
       ['updatePhase', 'patch', [7, 'PROMO']],
       ['removeArtwork', 'delete', [7]],
+      ['artworkDownloadLink', 'get', [7]],
       ['delete', 'delete', [7]],
     ])('%s passes API errors to the caller untouched', async (method, httpMethod, args) => {
       const error = httpError(500)

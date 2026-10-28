@@ -1,12 +1,12 @@
 /** Formats the server accepts; it re-checks the real content, this only gives early feedback */
 export const IMAGE_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp'])
 
-/** Matches spring.servlet.multipart.max-file-size on the backend */
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+/** Matches spring.servlet.multipart.max-file-size on the backend; covers for distributors are large */
+export const MAX_IMAGE_BYTES = 30 * 1024 * 1024
 
 /**
  * @param {number} bytes
- * @returns {string} e.g. "850 KB", "2.5 MB", "10 MB"
+ * @returns {string} e.g. "850 KB", "2.5 MB", "30 MB"
  */
 export function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`

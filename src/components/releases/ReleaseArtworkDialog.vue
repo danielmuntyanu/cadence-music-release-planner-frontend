@@ -33,7 +33,10 @@ const actions = {
           @uploaded="open = false"
           @removed="open = false"
         />
-        <p class="mt-4 text-xs text-on-surface-variant">Covers are cropped to a square, so square images work best.</p>
+        <p class="mt-4 text-xs text-on-surface-variant">
+          The app shows the cover cropped to a square. The original file is kept exactly as uploaded,
+          ready for distributors, who usually ask for a square image of at least 3000 × 3000 px.
+        </p>
       </v-card-text>
     </v-card>
   </v-dialog>

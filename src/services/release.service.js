@@ -37,5 +37,9 @@ export const releaseService = {
   removeArtwork: (id) =>
     api.delete(`/releases/${id}/artwork`).then(({ data }) => toRelease(data)),
 
+  // A five-minute link to the cover as uploaded, for distributors; 404 when it is not in our storage
+  artworkDownloadLink: (id) =>
+    api.get(`/releases/${id}/artwork/download`).then(({ data }) => data),
+
   delete: (id) => api.delete(`/releases/${id}`),
 }
