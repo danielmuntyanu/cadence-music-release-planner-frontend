@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toSong, toSongs } from '@/models/song'
-import { createSongForm, toSong, toSongRequest, toSongs } from '@/models/song'
+import { createSongForm, toSong, toSongFile, toSongFiles, toSongRequest, toSongs } from '@/models/song'
 
 describe('toSong', () => {
   it('returns null for non-object input', () => {
@@ -17,6 +16,8 @@ describe('toSong', () => {
       status: 'RECORDING',
       lyrics: '',
       explicit: false,
+      primaryFileId: null,
+      fileCount: 0,
       createdAt: null,
     })
   })
@@ -29,6 +30,10 @@ describe('toSong', () => {
     expect(toSong({ id: 1, explicit: true }).explicit).toBe(true)
     expect(toSong({ id: 1, explicit: 'true' }).explicit).toBe(false)
   })
+
+  it('knows its main file and how many files it has', () => {
+    expect(toSong({ id: 1, primaryFileId: 81, fileCount: 3 })).toMatchObject({ primaryFileId: 81, fileCount: 3 })
+  })
 })
 
 describe('toSongs', () => {
@@ -38,6 +43,35 @@ describe('toSongs', () => {
 
   it('returns an empty list for anything else', () => {
     expect(toSongs(undefined)).toEqual([])
+  })
+})
+
+describe('toSongFile', () => {
+  it('returns null for non-object input', () => {
+    expect(toSongFile(null)).toBeNull()
+  })
+
+  it('maps a file with safe defaults', () => {
+    expect(toSongFile({ id: 81 })).toEqual({
+      id: 81,
+      displayName: '',
+      originalFilename: '',
+      contentType: '',
+      sizeBytes: 0,
+      uploadedAt: null,
+      primary: false,
+      url: null,
+    })
+  })
+
+  it('treats only a real true as the main file', () => {
+    expect(toSongFile({ id: 81, primary: true }).primary).toBe(true)
+    expect(toSongFile({ id: 81, primary: 'true' }).primary).toBe(false)
+  })
+
+  it('toSongFiles maps a list and drops invalid entries', () => {
+    expect(toSongFiles([{ id: 81 }, null, { id: 82 }]).map((file) => file.id)).toEqual([81, 82])
+    expect(toSongFiles('nope')).toEqual([])
   })
 })
 

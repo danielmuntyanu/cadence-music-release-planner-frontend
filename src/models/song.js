@@ -13,7 +13,19 @@ import { formatDuration, formatIsrc, parseDuration } from '@/utils/song-format'
  * @property {SongStatus} status
  * @property {string} lyrics
  * @property {boolean} explicit
+ * @property {number | null} primaryFileId  The file with the heart
+ * @property {number} fileCount
  * @property {string | null} createdAt
+ *
+ * @typedef {Object} SongFile
+ * @property {number} id
+ * @property {string} displayName
+ * @property {string} originalFilename
+ * @property {string} contentType
+ * @property {number} sizeBytes
+ * @property {string | null} uploadedAt
+ * @property {boolean} primary
+ * @property {string | null} url  Signed and short-lived: for playback, not for keeping
  */
 
 /**
@@ -32,6 +44,8 @@ export function toSong(dto) {
     status: isSongStatus(dto.status) ? dto.status : DEFAULT_SONG_STATUS,
     lyrics: dto.lyrics ?? '',
     explicit: dto.explicit === true,
+    primaryFileId: dto.primaryFileId ?? null,
+    fileCount: dto.fileCount ?? 0,
     createdAt: dto.createdAt ?? null,
   }
 }
@@ -39,7 +53,27 @@ export function toSong(dto) {
 /** @param {unknown} data */
 export const toSongs = (data) => (Array.isArray(data) ? data.map(toSong).filter(Boolean) : [])
 
+/**
+ * @param {unknown} dto
+ * @returns {SongFile | null}
+ */
+export function toSongFile(dto) {
+  if (!dto || typeof dto !== 'object') return null
 
+  return {
+    id: dto.id,
+    displayName: dto.displayName ?? '',
+    originalFilename: dto.originalFilename ?? '',
+    contentType: dto.contentType ?? '',
+    sizeBytes: dto.sizeBytes ?? 0,
+    uploadedAt: dto.uploadedAt ?? null,
+    primary: dto.primary === true,
+    url: dto.url ?? null,
+  }
+}
+
+/** @param {unknown} data */
+export const toSongFiles = (data) => (Array.isArray(data) ? data.map(toSongFile).filter(Boolean) : [])
 
 /**
  * Form state for the song dialog: duration and ISRC as the user types them.

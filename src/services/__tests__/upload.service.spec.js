@@ -2,12 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '@/services/api'
 import { uploadService } from '@/services/upload.service'
 
+const storageClient = vi.hoisted(() => ({ put: vi.fn() }))
+
+vi.mock('axios', () => ({ default: { create: vi.fn(() => storageClient) } }))
+
 vi.mock('@/services/api', () => ({
   default: { put: vi.fn() },
 }))
 
 const file = new File(['image'], 'cover.png', { type: 'image/png' })
 const lastOptions = () => api.put.mock.calls.at(-1)[2]
+const lastStorageOptions = () => storageClient.put.mock.calls.at(-1)[2]
 
 describe('uploadService.putImage', () => {
   beforeEach(() => {
@@ -66,5 +71,52 @@ describe('uploadService.putImage', () => {
     api.put.mockRejectedValue(error)
 
     await expect(uploadService.putImage('/artists/7/avatar', file)).rejects.toBe(error)
+  })
+})
+
+describe('uploadService.putToStorage', () => {
+  const audio = new File(['RIFF'], 'mix3.wav', { type: 'audio/wav' })
+  const SIGNED = 'https://storage.test/put?X-Amz-Signature=abc'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    storageClient.put.mockResolvedValue({ status: 200 })
+  })
+
+  it('PUTs the raw file with exactly the signed headers, outside our API client', async () => {
+    const signal = new AbortController().signal
+
+    const result = await uploadService.putToStorage(SIGNED, audio, { 'content-type': 'audio/wav' }, { signal })
+
+    expect(storageClient.put).toHaveBeenCalledWith(SIGNED, audio, expect.objectContaining({
+      headers: { 'content-type': 'audio/wav' },
+      signal,
+    }))
+    // Not FormData: storage expects the bytes as the body
+    expect(storageClient.put.mock.calls[0][1]).toBe(audio)
+    expect(api.put).not.toHaveBeenCalled()
+    expect(result).toBeUndefined()
+  })
+
+  it('allows minutes, not seconds, for a large master', async () => {
+    await uploadService.putToStorage(SIGNED, audio)
+
+    expect(lastStorageOptions().timeout).toBeGreaterThanOrEqual(10 * 60 * 1000)
+  })
+
+  it('reports progress as a fraction', async () => {
+    const onProgress = vi.fn()
+    await uploadService.putToStorage(SIGNED, audio, {}, { onProgress })
+
+    lastStorageOptions().onUploadProgress({ loaded: 3, total: 4 })
+
+    expect(onProgress).toHaveBeenCalledWith(0.75)
+  })
+
+  it('passes storage errors to the caller untouched', async () => {
+    const error = Object.assign(new Error('HTTP 403'), { response: { status: 403 } })
+    storageClient.put.mockRejectedValue(error)
+
+    await expect(uploadService.putToStorage(SIGNED, audio)).rejects.toBe(error)
   })
 })
