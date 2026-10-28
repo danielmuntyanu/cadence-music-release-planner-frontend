@@ -25,7 +25,14 @@ const props = defineProps({
 
 const emit = defineEmits(['saved', 'delete', 'files-changed'])
 
+// What the dialog shows: the song it was opened with, then every version of it saved here.
+// After "Add song" this becomes the new song, so its files can be added right away
+const current = ref(props.song)
+watch(() => props.song, (song) => { current.value = song })
+
 const mode = ref('view')
+// Whether Cancel goes back to the read view, or closes because the form was opened directly
+const returnsToView = ref(false)
 const form = ref(createSongForm())
 const formRef = ref(null)
 const titleField = ref(null)
@@ -35,9 +42,9 @@ const lyricsExpanded = ref(false)
 const statusSaving = ref(false)
 const statusError = ref(null)
 
-const isNew = computed(() => !props.song)
+const isNew = computed(() => !current.value)
 const heading = computed(() => {
-  if (mode.value === 'view') return props.song?.title
+  if (mode.value === 'view') return current.value?.title
   if (lyricsExpanded.value) return form.value.title.trim() || 'Lyrics'
   return isNew.value ? 'Add song' : 'Edit song'
 })
@@ -69,31 +76,36 @@ async function focusField(field) {
 
 watch(open, (isOpen) => {
   if (!isOpen) return
+  current.value = props.song
   error.value = null
   statusError.value = null
   lyricsExpanded.value = false
-  form.value = createSongForm(props.song)
+  returnsToView.value = false
+  form.value = createSongForm(current.value)
   mode.value = isNew.value || props.startInEdit ? 'edit' : 'view'
   if (mode.value === 'edit') focusField('title')
 })
 
-/** @param {'title' | 'lyrics'} [field] where the cursor lands: the title, or straight in the lyrics */
+/** From the read view. @param {'title' | 'lyrics'} [field] where the cursor lands */
 function startEdit(field = 'title') {
-  form.value = createSongForm(props.song)
+  form.value = createSongForm(current.value)
   error.value = null
   lyricsExpanded.value = false
+  returnsToView.value = true
   mode.value = 'edit'
   focusField(field)
 }
 
-/** From the read view: back to it. Opened straight into the form: close */
+function showView() {
+  error.value = null
+  lyricsExpanded.value = false
+  mode.value = 'view'
+}
+
+/** Opened from the read view: back to it. Opened straight into the form: close */
 function cancel() {
-  if (isNew.value || props.startInEdit) {
-    open.value = false
-  } else {
-    error.value = null
-    mode.value = 'view'
-  }
+  if (returnsToView.value) showView()
+  else open.value = false
 }
 
 function expandLyrics() {
@@ -114,6 +126,7 @@ function onKeydown(event) {
   collapseLyrics()
 }
 
+/** Saves and shows the saved song, so work on it can go on: files, lyrics, status */
 async function save() {
   const { valid } = await formRef.value.validate()
   if (!valid) {
@@ -129,12 +142,13 @@ async function save() {
   const ok = await submit(async () => {
     saved = created
       ? await songService.create(props.releaseId, payload)
-      : await songService.replace(props.releaseId, props.song.id, payload)
+      : await songService.replace(props.releaseId, current.value.id, payload)
   })
   if (!ok) return
 
   emit('saved', saved, { created })
-  open.value = false
+  current.value = saved
+  showView()
 }
 
 /** A quick change from the read view: saved at once, the dialog stays open */
@@ -142,7 +156,8 @@ async function changeStatus(status) {
   statusSaving.value = true
   statusError.value = null
   try {
-    const updated = await songService.updateStatus(props.releaseId, props.song.id, status)
+    const updated = await songService.updateStatus(props.releaseId, current.value.id, status)
+    current.value = updated
     emit('saved', updated, { created: false })
   } catch (e) {
     console.error('### songs/updateStatus failed:\n', e)
@@ -155,7 +170,7 @@ async function changeStatus(status) {
 /** Deleting is confirmed by SongDeleteDialog, owned by the tracklist: this dialog only hands over */
 function requestDelete() {
   open.value = false
-  emit('delete', props.song)
+  emit('delete', current.value)
 }
 </script>
 
@@ -171,15 +186,15 @@ function requestDelete() {
       <v-card-title class="flex items-start gap-2 px-4 pt-4 sm:px-6">
         <div class="min-w-0 flex-1">
           <p
-            v-if="(mode === 'view' && song) || lyricsExpanded"
+            v-if="(mode === 'view' && current) || lyricsExpanded"
             class="text-xs font-medium uppercase tracking-widest text-on-surface-variant"
           >
-            {{ lyricsExpanded ? 'Lyrics' : `Track ${song.trackNumber}` }}
+            {{ lyricsExpanded ? 'Lyrics' : `Track ${current.trackNumber}` }}
           </p>
           <div class="flex min-w-0 items-center gap-1">
             <p class="truncate">{{ heading }}</p>
             <v-btn
-              v-if="mode === 'view' && song"
+              v-if="mode === 'view' && current"
               :icon="ICONS.RENAME"
               variant="text"
               size="small"
@@ -201,10 +216,10 @@ function requestDelete() {
       </v-card-title>
 
       <!-- Read view: what people work with first (files, lyrics), then the reference details -->
-      <v-card-text v-if="mode === 'view' && song" class="px-4 pb-2 sm:px-6">
+      <v-card-text v-if="mode === 'view' && current" class="px-4 pb-2 sm:px-6">
         <div class="mb-1 flex flex-wrap items-center gap-2">
-          <SongStatusMenu :status="song.status" :loading="statusSaving" @change="changeStatus" />
-          <v-chip v-if="song.explicit" size="small" variant="outlined" prepend-icon="mdi-alpha-e-box-outline">Explicit</v-chip>
+          <SongStatusMenu :status="current.status" :loading="statusSaving" @change="changeStatus" />
+          <v-chip v-if="current.explicit" size="small" variant="outlined" prepend-icon="mdi-alpha-e-box-outline">Explicit</v-chip>
         </div>
         <p v-if="statusError" class="text-xs text-error" role="alert">{{ statusError }}</p>
 
@@ -212,17 +227,17 @@ function requestDelete() {
           v-if="release"
           class="mt-5"
           :release="release"
-          :song="song"
+          :song="current"
           @changed="emit('files-changed')"
         />
 
         <div class="mb-2 mt-5 flex items-center justify-between">
           <p class="text-xs uppercase tracking-wider text-on-surface-variant">Lyrics</p>
-          <div class="flex items-center">
-            <CopyButton v-if="song.lyrics" :text="song.lyrics" label="Copy lyrics" />
+          <div class="flex items-center gap-2">
+            <CopyButton v-if="current.lyrics" :text="current.lyrics" label="Copy lyrics" />
             <v-btn
               :icon="ICONS.RENAME"
-              :aria-label="song.lyrics ? 'Edit lyrics' : 'Add lyrics'"
+              :aria-label="current.lyrics ? 'Edit lyrics' : 'Add lyrics'"
               variant="text"
               size="x-small"
               density="comfortable"
@@ -230,20 +245,20 @@ function requestDelete() {
             />
           </div>
         </div>
-        <ExpandableText :text="song.lyrics" :lines="8" placeholder="No lyrics yet." class="text-on-surface" />
+        <ExpandableText :text="current.lyrics" :lines="8" placeholder="No lyrics yet." class="text-on-surface" />
 
         <p class="mb-1 mt-5 text-xs uppercase tracking-wider text-on-surface-variant">Details</p>
         <div class="detail-row">
           <span class="text-sm text-on-surface-variant">Length</span>
-          <span :class="song.durationSeconds ? 'font-medium text-primary' : 'text-on-surface-variant'">
-            {{ song.durationSeconds ? formatDuration(song.durationSeconds) : 'Not set' }}
+          <span :class="current.durationSeconds ? 'font-medium text-primary' : 'text-on-surface-variant'">
+            {{ current.durationSeconds ? formatDuration(current.durationSeconds) : 'Not set' }}
           </span>
         </div>
         <div class="detail-row">
           <span class="text-sm text-on-surface-variant">ISRC</span>
-          <span v-if="song.isrc" class="flex items-center gap-1">
-            <span class="font-mono font-medium text-primary">{{ formatIsrc(song.isrc) }}</span>
-            <CopyButton :text="song.isrc" label="Copy ISRC" />
+          <span v-if="current.isrc" class="flex items-center gap-1">
+            <span class="font-mono font-medium text-primary">{{ formatIsrc(current.isrc) }}</span>
+            <CopyButton :text="current.isrc" label="Copy ISRC" />
           </span>
           <span v-else class="text-on-surface-variant">Not set</span>
         </div>

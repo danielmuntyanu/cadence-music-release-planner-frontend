@@ -56,6 +56,8 @@ const iconButton = (label) => document.body.querySelector(`button[aria-label="${
 const copyButton = (wrapper, label) =>
   wrapper.findAllComponents(CopyButton).find((copy) => copy.props('label') === label)
 
+const isInForm = (wrapper) => wrapper.findComponent({ name: 'VForm' }).exists()
+
 /** Field labels in the order they appear; Vuetify also renders a floating copy of each, kept once */
 function labelsInForm() {
   const labels = [...document.body.querySelectorAll('.v-dialog .v-label')].map((label) => label.textContent.trim())
@@ -105,7 +107,7 @@ describe('SongDialog', () => {
 
       await button(wrapper, 'Cancel').trigger('click')
       await flushPromises()
-      expect(wrapper.findComponent({ name: 'VForm' }).exists()).toBe(false)
+      expect(isInForm(wrapper)).toBe(false)
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     })
 
@@ -164,7 +166,7 @@ describe('SongDialog', () => {
   })
 
   describe('status from the read view', () => {
-    it('saves a new status at once and keeps the dialog open', async () => {
+    it('saves a new status at once, shows it and keeps the dialog open', async () => {
       const updated = { ...SONG, status: 'DONE' }
       songService.updateStatus.mockResolvedValue(updated)
       const wrapper = await openDialog({ song: SONG })
@@ -174,6 +176,7 @@ describe('SongDialog', () => {
 
       expect(songService.updateStatus).toHaveBeenCalledWith(42, 71, 'DONE')
       expect(wrapper.emitted('saved')).toEqual([[updated, { created: false }]])
+      expect(wrapper.findComponent(SongStatusMenu).props('status')).toBe('DONE')
       expect(wrapper.emitted('update:modelValue')).toBeUndefined()
     })
 
@@ -296,6 +299,69 @@ describe('SongDialog', () => {
     })
   })
 
+  describe('after saving', () => {
+    it('shows the saved song instead of closing', async () => {
+      const saved = { ...SONG, title: 'Night Drive (Edit)', lyrics: 'New verse' }
+      songService.replace.mockResolvedValue(saved)
+      const wrapper = await openDialog({ song: SONG })
+      await button(wrapper, 'Edit').trigger('click')
+      await flushPromises()
+
+      await fill(wrapper, 'Title', 'Night Drive (Edit)')
+      await submitForm(wrapper)
+
+      expect(wrapper.emitted('saved')).toEqual([[saved, { created: false }]])
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+      expect(isInForm(wrapper)).toBe(false)
+      expect(document.body.textContent).toContain('Night Drive (Edit)')
+      expect(wrapper.findComponent(ExpandableText).props('text')).toBe('New verse')
+    })
+
+    it('a new song opens in its read view, ready for files', async () => {
+      const created = { ...SONG, id: 74, trackNumber: 6, title: 'Bonus Track' }
+      songService.create.mockResolvedValue(created)
+      const wrapper = await openDialog({ release: RELEASE })
+
+      await fill(wrapper, 'Title', 'Bonus Track')
+      await submitForm(wrapper)
+
+      expect(isInForm(wrapper)).toBe(false)
+      expect(document.body.textContent).toContain('Track 6')
+      expect(wrapper.findComponent(SongFilesSection).props('song')).toEqual(created)
+    })
+
+    it('editing the new song again saves it, not a second new one', async () => {
+      const created = { ...SONG, id: 74, title: 'Bonus Track' }
+      songService.create.mockResolvedValue(created)
+      songService.replace.mockResolvedValue({ ...created, title: 'Bonus Track (Live)' })
+      const wrapper = await openDialog()
+      await fill(wrapper, 'Title', 'Bonus Track')
+      await submitForm(wrapper)
+
+      await button(wrapper, 'Edit').trigger('click')
+      await flushPromises()
+      await fill(wrapper, 'Title', 'Bonus Track (Live)')
+      await submitForm(wrapper)
+
+      expect(songService.create).toHaveBeenCalledTimes(1)
+      expect(songService.replace).toHaveBeenCalledWith(42, 74, expect.objectContaining({ title: 'Bonus Track (Live)' }))
+    })
+
+    it('Cancel after editing from the read view goes back to it, even when opened from the row menu', async () => {
+      songService.replace.mockResolvedValue(SONG)
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      await submitForm(wrapper)
+
+      await button(wrapper, 'Edit').trigger('click')
+      await flushPromises()
+      await button(wrapper, 'Cancel').trigger('click')
+      await flushPromises()
+
+      expect(isInForm(wrapper)).toBe(false)
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+  })
+
   describe('adding', () => {
     it('opens straight into an empty form', async () => {
       const wrapper = await openDialog()
@@ -317,7 +383,6 @@ describe('SongDialog', () => {
         title: 'Bonus Track', durationSeconds: 245, status: 'WRITING',
       }))
       expect(wrapper.emitted('saved')).toEqual([[created, { created: true }]])
-      expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([false])
     })
 
     it('Cancel closes, as there is no read view to return to', async () => {
@@ -334,6 +399,14 @@ describe('SongDialog', () => {
       await openDialog({ song: SONG, startInEdit: true })
 
       expect(document.body.textContent).toContain('Edit song')
+    })
+
+    it('Cancel from the row menu closes, as the read view was never shown', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+
+      await button(wrapper, 'Cancel').trigger('click')
+
+      expect(wrapper.emitted('update:modelValue').at(-1)).toEqual([false])
     })
 
     it('replaces the whole song, clearing emptied fields', async () => {
@@ -355,13 +428,14 @@ describe('SongDialog', () => {
       expect(field(wrapper, 'ISRC').props('modelValue')).toBe('US-ABC-26-00009')
     })
 
-    it('stays open and shows the error when saving fails', async () => {
+    it('stays in the form and shows the error when saving fails', async () => {
       songService.replace.mockRejectedValue({ response: { status: 404 } })
       const wrapper = await openDialog({ song: SONG, startInEdit: true })
 
       await submitForm(wrapper)
 
       expect(document.body.textContent).toContain('This song no longer exists')
+      expect(isInForm(wrapper)).toBe(true)
       expect(wrapper.emitted('saved')).toBeUndefined()
     })
   })
