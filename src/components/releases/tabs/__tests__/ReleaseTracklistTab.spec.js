@@ -10,6 +10,7 @@ import { makeRelease } from '@/test-utils/fixtures/releases'
 import SongDialog from '@/components/songs/SongDialog.vue'
 import ReleaseProgress from '../../ReleaseProgress.vue'
 import { makeSong } from '@/test-utils/fixtures/songs'
+import { usePlayerStore } from '@/stores/player'
 
 
 vi.mock('@/services/song.service', () => ({
@@ -173,6 +174,57 @@ describe('ReleaseTracklistTab', () => {
     expect(text).toMatch(/Done\s*2/)
     expect(text).toMatch(/Writing\s*1/)
   })
+
+  describe('playback', () => {
+    it('offers a play button only for songs with audio', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 2 }, { ...title, fileCount: 0 }])
+
+      expect(wrapper.find('button[aria-label="Play Intro"]').exists()).toBe(true)
+      expect(wrapper.find('button[aria-label="Play Night Drive"]').exists()).toBe(false)
+    })
+
+    it('plays the song through the global player', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 1 }])
+      const playSong = vi.spyOn(usePlayerStore(), 'playSong').mockResolvedValue(null)
+
+      await wrapper.find('button[aria-label="Play Intro"]').trigger('click')
+      await flushPromises()
+
+      expect(playSong).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }), expect.objectContaining({ id: intro.id }))
+    })
+
+    it('explains why a song could not play', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 1 }])
+      vi.spyOn(usePlayerStore(), 'playSong').mockResolvedValue('“Intro” has no audio yet.')
+
+      await wrapper.find('button[aria-label="Play Intro"]').trigger('click')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('“Intro” has no audio yet.')
+    })
+
+    it('stops the player when the playing song is deleted', async () => {
+      const wrapper = await mountTab()
+      const player = usePlayerStore()
+      vi.spyOn(player, 'isCurrentSong').mockImplementation((id) => id === title.id)
+      const stop = vi.spyOn(player, 'stop')
+
+      wrapper.findComponent(SongDeleteDialog).vm.$emit('deleted', title)
+      await flushPromises()
+
+      expect(stop).toHaveBeenCalled()
+    })
+
+    it('gives the song dialog the release, and reloads when its files change', async () => {
+      const wrapper = await mountTab()
+      expect(wrapper.findComponent(SongDialog).props('release')).toMatchObject({ id: 42 })
+
+      wrapper.findComponent(SongDialog).vm.$emit('files-changed')
+      await flushPromises()
+
+      expect(songService.getAll).toHaveBeenCalledTimes(2)
+    })
+  })
 })
 
 describe('song dialog', () => {
@@ -237,3 +289,4 @@ describe('song dialog', () => {
     expect(wrapper.emitted('songs-changed')).toHaveLength(1)
   })
 })
+

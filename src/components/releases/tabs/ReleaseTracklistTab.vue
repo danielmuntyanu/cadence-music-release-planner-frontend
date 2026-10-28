@@ -8,7 +8,9 @@ import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 import SongDeleteDialog from '@/components/songs/SongDeleteDialog.vue'
 import SongDialog from '@/components/songs/SongDialog.vue'
 import { songService } from '@/services/song.service'
+import { usePlayerStore } from '@/stores/player'
 import { SONG_STATUSES, getSongStatus, getSongStatusProgress } from '@/constants/song-statuses'
+import { ICONS } from '@/constants/icons'
 import { formatDuration } from '@/utils/song-format'
 import { pluralize } from '@/utils/format'
 
@@ -22,6 +24,8 @@ const emit = defineEmits(['updated', 'songs-changed'])
 
 // The length column and the table header only exist from the "sm" breakpoint up
 const { smAndUp } = useDisplay()
+
+const player = usePlayerStore()
 
 const songs = ref([])
 const loading = ref(false)
@@ -84,6 +88,16 @@ async function load() {
 }
 
 watch(() => props.release.id, load, { immediate: true })
+
+// ---------- Playback ----------
+
+const hasAudio = (song) => song.fileCount > 0
+const isPlaying = (song) => player.isCurrentSong(song.id) && player.playing
+
+async function onPlay(song) {
+  const problem = await player.playSong(props.release, song)
+  if (problem) notify(problem, 'error')
+}
 
 // ---------- Song dialog ----------
 
@@ -173,6 +187,8 @@ function openDelete(song) {
 }
 
 function onDeleted(song) {
+  // A deleted song cannot keep playing: its audio is gone
+  if (player.isCurrentSong(song.id)) player.stop()
   songs.value = songs.value.filter((s) => s.id !== song.id)
   notify('Song deleted')
   emit('songs-changed')
@@ -222,7 +238,7 @@ function onDeleted(song) {
         class="song-grid tracklist-head mt-3 px-4 pb-2 text-xs uppercase tracking-wider text-on-surface-variant"
       >
         <span />
-        <span class="text-end">#</span>
+        <span class="text-center">#</span>
         <span>Title</span>
         <span>Status</span>
         <v-icon icon="mdi-clock-outline" size="14" class="justify-self-end" aria-label="Length" />
@@ -256,8 +272,26 @@ function onDeleted(song) {
             :aria-label="`Drag to reorder ${song.title}`"
           />
 
-          <!-- Position in the list, so the number is right while dragging, before the server answers -->
-          <span class="text-sm tabular-nums text-on-surface-variant sm:text-end">{{ index + 1 }}</span>
+          <!-- The number turns into a play button: on hover, on touch screens, and for the playing track -->
+          <div
+            class="track-cell"
+            :class="{ 'has-audio': hasAudio(song), 'is-current': player.isCurrentSong(song.id) }"
+          >
+            <!-- Position in the list, so the number is right while dragging, before the server answers -->
+            <span class="track-number text-sm tabular-nums text-on-surface-variant">{{ index + 1 }}</span>
+            <v-btn
+              v-if="hasAudio(song)"
+              class="track-play"
+              :icon="isPlaying(song) ? ICONS.PAUSE : ICONS.PLAY"
+              :loading="player.loadingSongId === song.id"
+              :aria-label="`${isPlaying(song) ? 'Pause' : 'Play'} ${song.title}`"
+              color="primary"
+              variant="text"
+              size="x-small"
+              density="comfortable"
+              @click="onPlay(song)"
+            />
+          </div>
 
           <!-- min-w-0 lets a long title shrink and truncate instead of pushing the status out -->
           <button
@@ -266,7 +300,10 @@ function onDeleted(song) {
             :aria-label="`Open ${song.title}`"
             @click="openSong(song)"
           >
-            <span class="song-title flex min-w-0 items-center gap-2 font-medium text-on-surface">
+            <span
+              class="song-title flex min-w-0 items-center gap-2 font-medium"
+              :class="player.isCurrentSong(song.id) ? 'text-primary' : 'text-on-surface'"
+            >
               <span class="truncate">{{ song.title }}</span>
               <ExplicitBadge v-if="song.explicit" />
             </span>
@@ -295,7 +332,7 @@ function onDeleted(song) {
               />
             </template>
             <v-list density="compact" min-width="170">
-              <v-list-item prepend-icon="mdi-pencil-outline" title="Edit" @click="openSong(song, true)" />
+              <v-list-item :prepend-icon="ICONS.RENAME" title="Edit" @click="openSong(song, true)" />
               <v-divider />
               <v-list-item
                 prepend-icon="mdi-arrow-up"
@@ -310,7 +347,7 @@ function onDeleted(song) {
                 @click="move(index, 1)"
               />
               <v-divider />
-              <v-list-item prepend-icon="mdi-delete-outline" title="Delete" base-color="error" @click="openDelete(song)" />
+              <v-list-item :prepend-icon="ICONS.DELETE" title="Delete" base-color="error" @click="openDelete(song)" />
             </v-list>
           </v-menu>
         </div>
@@ -356,20 +393,22 @@ function onDeleted(song) {
   <SongDialog
     v-model="songDialogOpen"
     :release-id="release.id"
+    :release="release"
     :song="dialogSong"
     :start-in-edit="dialogStartInEdit"
     @saved="onSaved"
     @delete="openDelete"
+    @files-changed="load"
   />
   <SongDeleteDialog v-model="deleteOpen" :release-id="release.id" :song="deleteTarget" @deleted="onDeleted" />
   <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="2500">{{ snackbar.text }}</v-snackbar>
 </template>
 
 <style scoped>
-/* Phones: handle | # | title | status | menu. Tight first columns leave room for the title */
+/* Phones: handle | # / play | title | status | menu. Tight first columns leave room for the title */
 .song-grid {
   display: grid;
-  grid-template-columns: 1.5rem 1.25rem minmax(0, 1fr) auto 2.25rem;
+  grid-template-columns: 1.5rem 1.75rem minmax(0, 1fr) auto 2.25rem;
   align-items: center;
   column-gap: 0.375rem;
 }
@@ -378,10 +417,47 @@ function onDeleted(song) {
    Must stay below the base rule: equal specificity, so the later rule wins */
 @media (min-width: 600px) {
   .song-grid {
-    grid-template-columns: 2rem 1.5rem minmax(0, 1fr) 9.5rem 3rem 2.5rem;
+    grid-template-columns: 2rem 2rem minmax(0, 1fr) 9.5rem 3rem 2.5rem;
     column-gap: 0.75rem;
   }
 }
+
+/* ---------- Number and play button share one cell ---------- */
+
+.track-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track-play {
+  display: none;
+}
+
+.song-row:hover .track-cell.has-audio .track-number,
+.song-row:focus-within .track-cell.has-audio .track-number,
+.track-cell.is-current .track-number {
+  display: none;
+}
+
+.song-row:hover .track-cell.has-audio .track-play,
+.song-row:focus-within .track-cell.has-audio .track-play,
+.track-cell.is-current .track-play {
+  display: inline-flex;
+}
+
+/* Touch screens have no hover: songs with audio always show their play button */
+@media (hover: none) {
+  .track-cell.has-audio .track-number {
+    display: none;
+  }
+
+  .track-cell.has-audio .track-play {
+    display: inline-flex;
+  }
+}
+
+/* ---------- Rows ---------- */
 
 /* on-surface with explicit alpha: visible in both themes, unlike the theme border opacity */
 .song-row {
