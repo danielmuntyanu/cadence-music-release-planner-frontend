@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import ArtistAvatar from '@/components/artists/ArtistAvatar.vue'
 import EditableField from '@/components/common/EditableField.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
@@ -20,6 +21,9 @@ const emit = defineEmits(['updated'])
 
 // Only one field on this tab can be in edit mode at a time
 provideInlineEditGroup()
+
+// Desktop gives the notes the main column: more of them shown, a larger editor
+const { lgAndUp } = useDisplay()
 
 const artistCreatorOpen = ref(false)
 
@@ -77,116 +81,126 @@ const ISO_DATE_RULE = (draft) => () =>
 </script>
 
 <template>
-  <div class="grid items-start gap-6 lg:grid-cols-3">
-    <div class="flex flex-col gap-6 lg:col-span-2">
-      <v-card border flat>
-        <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Details</v-card-title>
-        <div class="px-4 pb-2 sm:px-6">
-          <EditableField label="Name" :value="release.name" :save="saveName" :error-messages="ERROR_MESSAGES">
-            <template #display="{ value }"><span :class="valueClass(false)">{{ value }}</span></template>
-            <template #editor="{ draft, set }">
-              <v-text-field :model-value="draft" :rules="rules.name" counter="150" @update:model-value="set" />
-            </template>
-          </EditableField>
-          <v-divider />
+  <!--
+    Source order is the phone order: details, notes, artists.
+    From lg up the grid places them: details and artists on the left, notes spanning both rows on the right.
+  -->
+  <div class="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
+    <v-card border flat class="self-start lg:col-start-1 lg:row-start-1">
+      <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Details</v-card-title>
+      <div class="px-4 pb-2 sm:px-6">
+        <EditableField label="Name" :value="release.name" :save="saveName" :error-messages="ERROR_MESSAGES">
+          <template #display="{ value }"><span :class="valueClass(false)">{{ value }}</span></template>
+          <template #editor="{ draft, set }">
+            <v-text-field :model-value="draft" :rules="rules.name" counter="150" @update:model-value="set" />
+          </template>
+        </EditableField>
+        <v-divider />
 
-          <EditableField label="Type" :value="release.type" :save="saveType" :error-messages="ERROR_MESSAGES">
-            <template #display="{ value }"><span :class="valueClass(false)">{{ getReleaseTypeLabel(value) }}</span></template>
-            <template #editor="{ draft, set }">
-              <v-chip-group :model-value="draft" mandatory filter column @update:model-value="set">
-                <v-chip v-for="type in RELEASE_TYPES" :key="type.value" :value="type.value" :prepend-icon="type.icon" variant="outlined">
-                  {{ type.label }}
-                </v-chip>
-              </v-chip-group>
-            </template>
-          </EditableField>
-          <v-divider />
+        <EditableField label="Type" :value="release.type" :save="saveType" :error-messages="ERROR_MESSAGES">
+          <template #display="{ value }"><span :class="valueClass(false)">{{ getReleaseTypeLabel(value) }}</span></template>
+          <template #editor="{ draft, set }">
+            <v-chip-group :model-value="draft" mandatory filter column @update:model-value="set">
+              <v-chip v-for="type in RELEASE_TYPES" :key="type.value" :value="type.value" :prepend-icon="type.icon" variant="outlined">
+                {{ type.label }}
+              </v-chip>
+            </v-chip-group>
+          </template>
+        </EditableField>
+        <v-divider />
 
-          <!-- Changed from the phase chip in the header -->
-          <EditableField label="Phase" :value="release.phase" :save="() => {}" :editable="false">
-            <template #display="{ value }"><span :class="valueClass(false)">{{ getReleasePhase(value).label }}</span></template>
-          </EditableField>
-          <v-divider />
+        <!-- Changed from the phase chip in the header -->
+        <EditableField label="Phase" :value="release.phase" :save="() => {}" :editable="false">
+          <template #display="{ value }"><span :class="valueClass(false)">{{ getReleasePhase(value).label }}</span></template>
+        </EditableField>
+        <v-divider />
 
-          <EditableField label="Dates" :value="dates" :save="saveDates" :error-messages="ERROR_MESSAGES">
-            <template #display>
-              <span :class="valueClass(!release.releaseDate)">
-                {{ release.releaseDate ? formatIsoDate(release.releaseDate) : 'Not set' }}
-              </span>
-              <span v-if="release.originalReleaseDate" class="block text-xs text-on-surface-variant">
-                Original release: {{ formatIsoDate(release.originalReleaseDate) }}
-              </span>
-            </template>
-            <template #editor="{ draft }">
-              <div class="grid gap-x-4 sm:grid-cols-2">
-                <IsoDateInput v-model="draft.releaseDate" label="Release date" prepend-inner-icon="mdi-calendar" />
-                <IsoDateInput
-                  v-model="draft.originalReleaseDate"
-                  label="Original release date"
-                  hint="Only for reissues and remasters"
-                  persistent-hint
-                  prepend-inner-icon="mdi-history"
-                  :rules="[ISO_DATE_RULE(draft)]"
-                />
-              </div>
-            </template>
-          </EditableField>
-          <v-divider />
+        <EditableField label="Dates" :value="dates" :save="saveDates" :error-messages="ERROR_MESSAGES">
+          <template #display>
+            <span :class="valueClass(!release.releaseDate)">
+              {{ release.releaseDate ? formatIsoDate(release.releaseDate) : 'Not set' }}
+            </span>
+            <span v-if="release.originalReleaseDate" class="block text-xs text-on-surface-variant">
+              Original release: {{ formatIsoDate(release.originalReleaseDate) }}
+            </span>
+          </template>
+          <template #editor="{ draft }">
+            <div class="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+              <IsoDateInput v-model="draft.releaseDate" label="Release date" prepend-inner-icon="mdi-calendar" />
+              <IsoDateInput
+                v-model="draft.originalReleaseDate"
+                label="Original release date"
+                hint="Only for reissues and remasters"
+                persistent-hint
+                prepend-inner-icon="mdi-history"
+                :rules="[ISO_DATE_RULE(draft)]"
+              />
+            </div>
+          </template>
+        </EditableField>
+        <v-divider />
 
-          <EditableField label="Genres" :value="genres" :save="saveGenres" :error-messages="ERROR_MESSAGES">
-            <template #display>
-              <span :class="valueClass(false)">
-                {{ [release.primaryGenre, release.secondaryGenre].filter(Boolean).map(getGenreLabel).join(' · ') }}
-              </span>
-            </template>
-            <template #editor="{ draft }">
-              <div class="grid gap-x-4 sm:grid-cols-2">
-                <v-autocomplete
-                  :model-value="draft.primaryGenre"
-                  :items="GENRES"
-                  item-title="label"
-                  item-value="value"
-                  label="Primary genre"
-                  :rules="rules.primaryGenre"
-                  @update:model-value="(value) => setPrimaryGenre(draft, value)"
-                />
-                <v-autocomplete
-                  v-model="draft.secondaryGenre"
-                  :items="GENRES.filter((genre) => genre.value !== draft.primaryGenre)"
-                  item-title="label"
-                  item-value="value"
-                  label="Secondary genre"
-                  clearable
-                />
-              </div>
-            </template>
-          </EditableField>
-          <v-divider />
+        <EditableField label="Genres" :value="genres" :save="saveGenres" :error-messages="ERROR_MESSAGES">
+          <template #display>
+            <span :class="valueClass(false)">
+              {{ [release.primaryGenre, release.secondaryGenre].filter(Boolean).map(getGenreLabel).join(' · ') }}
+            </span>
+          </template>
+          <template #editor="{ draft }">
+            <div class="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+              <v-autocomplete
+                :model-value="draft.primaryGenre"
+                :items="GENRES"
+                item-title="label"
+                item-value="value"
+                label="Primary genre"
+                :rules="rules.primaryGenre"
+                @update:model-value="(value) => setPrimaryGenre(draft, value)"
+              />
+              <v-autocomplete
+                v-model="draft.secondaryGenre"
+                :items="GENRES.filter((genre) => genre.value !== draft.primaryGenre)"
+                item-title="label"
+                item-value="value"
+                label="Secondary genre"
+                clearable
+              />
+            </div>
+          </template>
+        </EditableField>
+        <v-divider />
 
-          <EditableField label="Added" :value="release.createdAt" :save="() => {}" :editable="false">
-            <template #display="{ value }">
-              <span :class="valueClass(!value)">{{ value ? formatInstant(value) : '—' }}</span>
-            </template>
-          </EditableField>
-        </div>
-      </v-card>
+        <EditableField label="Added" :value="release.createdAt" :save="() => {}" :editable="false">
+          <template #display="{ value }">
+            <span :class="valueClass(!value)">{{ value ? formatInstant(value) : '—' }}</span>
+          </template>
+        </EditableField>
+      </div>
+    </v-card>
 
-      <v-card border flat>
-        <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Notes</v-card-title>
-        <div class="px-4 pb-2 sm:px-6">
-          <EditableField label="Notes" layout="block" :value="release.notes" :save="saveNotes" :error-messages="ERROR_MESSAGES">
-            <template #display="{ value }">
-              <ExpandableText :text="value" :lines="4" placeholder="No notes yet." class="text-on-surface" />
-            </template>
-            <template #editor="{ draft, set }">
-              <v-textarea :model-value="draft" :rules="rules.notes" counter="1024" rows="3" auto-grow @update:model-value="set" />
-            </template>
-          </EditableField>
-        </div>
-      </v-card>
-    </div>
+    <!-- Notes: the main column on desktop, filling the height of details and artists -->
+    <v-card border flat class="flex flex-col lg:col-span-2 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+      <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Notes</v-card-title>
+      <div class="flex-1 px-4 pb-2 sm:px-6">
+        <EditableField label="Notes" layout="block" :value="release.notes" :save="saveNotes" :error-messages="ERROR_MESSAGES">
+          <template #display="{ value }">
+            <ExpandableText :text="value" :lines="lgAndUp ? 16 : 4" placeholder="No notes yet." class="text-on-surface" />
+          </template>
+          <template #editor="{ draft, set }">
+            <v-textarea
+              :model-value="draft"
+              :rules="rules.notes"
+              counter="1024"
+              :rows="lgAndUp ? 12 : 3"
+              auto-grow
+              @update:model-value="set"
+            />
+          </template>
+        </EditableField>
+      </div>
+    </v-card>
 
-    <v-card border flat>
+    <v-card border flat class="self-start lg:col-start-1 lg:row-start-2">
       <v-card-title class="px-4 pt-4 text-base font-medium sm:px-6">Artists</v-card-title>
       <div class="px-4 pb-2 sm:px-6">
         <EditableField
