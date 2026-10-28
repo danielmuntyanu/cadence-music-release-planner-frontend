@@ -1,11 +1,15 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import { usePlayerStore } from '@/stores/player'
 import { ICONS } from '@/constants/icons'
 import { formatDuration } from '@/utils/song-format'
 
 const player = usePlayerStore()
 const audio = ref(null)
+
+// Phones keep the essentials next to the title; repeat and the clock need a wider screen
+const { smAndUp } = useDisplay()
 
 onMounted(() => player.attach(audio.value))
 onBeforeUnmount(() => player.detach())
@@ -48,39 +52,74 @@ function onSlideEnd(value) {
       @end="onSlideEnd"
     />
 
-    <div class="flex w-full items-center gap-3 px-3 pb-2 sm:px-4">
-      <RouterLink
-        :to="{ name: 'release-tracklist', params: { id: player.track.releaseId } }"
-        class="h-11 w-11 shrink-0 overflow-hidden"
-        :aria-label="`Open the tracklist of ${player.track.title}`"
-      >
-        <img v-if="player.track.artworkUrl" :src="player.track.artworkUrl" alt="" class="h-full w-full object-cover" />
-        <div v-else class="flex h-full w-full items-center justify-center bg-surface-variant">
-          <v-icon :icon="ICONS.AUDIO" size="20" class="text-on-surface-variant" />
-        </div>
-      </RouterLink>
+    <div class="player-row w-full px-3 pb-2 sm:px-4">
+      <!-- Now playing -->
+      <div class="flex min-w-0 items-center gap-3">
+        <RouterLink
+          :to="{ name: 'release-tracklist', params: { id: player.track.releaseId } }"
+          class="h-11 w-11 shrink-0 overflow-hidden"
+          :aria-label="`Open the tracklist of ${player.track.title}`"
+        >
+          <img v-if="player.track.artworkUrl" :src="player.track.artworkUrl" alt="" class="h-full w-full object-cover" />
+          <div v-else class="flex h-full w-full items-center justify-center bg-surface-variant">
+            <v-icon :icon="ICONS.AUDIO" size="20" class="text-on-surface-variant" />
+          </div>
+        </RouterLink>
 
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-medium text-on-surface">{{ player.track.title }}</p>
-        <p class="truncate text-xs" :class="player.error ? 'text-error' : 'text-on-surface-variant'" role="status">
-          {{ player.error || player.track.subtitle }}
-        </p>
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-on-surface">{{ player.track.title }}</p>
+          <p class="truncate text-xs" :class="player.error ? 'text-error' : 'text-on-surface-variant'" role="status">
+            {{ player.error || player.track.subtitle }}
+          </p>
+        </div>
       </div>
 
-      <span class="hidden text-xs tabular-nums text-on-surface-variant sm:inline">
-        {{ clock(position) }} / {{ clock(player.duration) }}
-      </span>
+      <!-- Controls: centred on wide screens, next to the title on phones -->
+      <div class="flex items-center gap-1">
+        <v-btn
+          v-if="smAndUp"
+          :icon="ICONS.REPEAT_ONE"
+          :color="player.repeat ? 'primary' : undefined"
+          :class="!player.repeat && 'opacity-60'"
+          :aria-pressed="player.repeat"
+          aria-label="Repeat this track"
+          variant="text"
+          size="small"
+          @click="player.toggleRepeat()"
+        />
+        <v-btn
+          :icon="ICONS.PREVIOUS"
+          aria-label="Previous track or restart"
+          variant="text"
+          size="small"
+          @click="player.previous()"
+        />
+        <v-btn
+          :icon="player.playing ? ICONS.PAUSE : ICONS.PLAY"
+          :loading="player.playing && player.buffering"
+          :aria-label="player.playing ? 'Pause' : 'Play'"
+          color="primary"
+          variant="flat"
+          size="small"
+          @click="player.toggle()"
+        />
+        <v-btn
+          :icon="ICONS.NEXT"
+          :disabled="!player.hasNext"
+          aria-label="Next track"
+          variant="text"
+          size="small"
+          @click="player.next()"
+        />
+      </div>
 
-      <v-btn
-        :icon="player.playing ? ICONS.PAUSE : ICONS.PLAY"
-        :loading="player.playing && player.buffering"
-        :aria-label="player.playing ? 'Pause' : 'Play'"
-        color="primary"
-        variant="flat"
-        size="small"
-        @click="player.toggle()"
-      />
-      <v-btn :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close player" @click="player.stop()" />
+      <!-- Clock and close -->
+      <div class="flex items-center justify-end gap-2">
+        <span v-if="smAndUp" class="text-xs tabular-nums text-on-surface-variant">
+          {{ clock(position) }} / {{ clock(player.duration) }}
+        </span>
+        <v-btn :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close player" @click="player.stop()" />
+      </div>
     </div>
   </v-footer>
 </template>
@@ -93,5 +132,21 @@ function onSlideEnd(value) {
 /* The seek bar runs along the top edge of the player, like in music apps */
 .player-seek {
   margin: -6px 0 0;
+}
+
+/* Phones: title | controls | close */
+.player-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 0.25rem;
+}
+
+/* Wider screens: equal side columns keep the controls exactly in the middle */
+@media (min-width: 600px) {
+  .player-row {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    column-gap: 1rem;
+  }
 }
 </style>

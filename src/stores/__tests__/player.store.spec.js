@@ -11,6 +11,7 @@ function fakeAudio() {
   const listeners = {}
   return {
     paused: true,
+    loop: false,
     currentTime: 0,
     duration: Number.NaN,
     src: '',
@@ -42,9 +43,16 @@ function fakeAudio() {
 }
 
 const RELEASE = { id: 42, name: 'Neon Siesta', artworkUrl: 'https://signed.test/cover.jpg' }
-const SONG = { id: 71, title: 'Siesta Lights' }
+const SONG = { id: 71, title: 'Siesta Lights', primaryFileId: 82 }
 const MIX = { id: 81, displayName: 'mix3', primary: false, url: 'https://signed.test/mix3.wav' }
 const MASTER = { id: 82, displayName: 'master', primary: true, url: 'https://signed.test/master.wav' }
+
+// A tracklist: two songs with a main file around one without audio
+const INTRO = { id: 70, title: 'Intro', primaryFileId: 90 }
+const DEMO_ONLY = { id: 72, title: 'Coral Static', primaryFileId: null }
+const OUTRO = { id: 73, title: 'Outro', primaryFileId: 93 }
+const TRACKLIST = [INTRO, SONG, DEMO_ONLY, OUTRO]
+const mainFileOf = (songId) => ({ id: songId + 20, displayName: `main of ${songId}`, primary: true, url: `https://signed.test/${songId}.wav` })
 
 describe('player store', () => {
   let player
@@ -153,6 +161,133 @@ describe('player store', () => {
     })
   })
 
+  describe('queue from a tracklist', () => {
+    beforeEach(() => {
+      songService.getFiles.mockImplementation(async (releaseId, songId) => [mainFileOf(songId)])
+    })
+
+    it('queues the songs that have a main file, in tracklist order', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+
+      expect(player.queue.map((entry) => entry.song.id)).toEqual([70, 71, 73])
+      expect(player.queueIndex).toBe(1)
+      expect(player.hasPrevious).toBe(true)
+      expect(player.hasNext).toBe(true)
+    })
+
+    it('next skips songs without a main file and fetches the link only then', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+      expect(songService.getFiles).toHaveBeenCalledTimes(1)
+
+      await player.next()
+
+      expect(player.track.songId).toBe(73)
+      expect(songService.getFiles).toHaveBeenLastCalledWith(42, 73)
+      expect(player.hasNext).toBe(false)
+    })
+
+    it('moves on by itself when a track ends', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+
+      audio.fire('ended')
+
+      await vi.waitFor(() => expect(player.track.songId).toBe(73))
+    })
+
+    it('stops after the last track', async () => {
+      await player.playSong(RELEASE, OUTRO, TRACKLIST)
+
+      audio.fire('ended')
+
+      expect(player.playing).toBe(false)
+      expect(player.track.songId).toBe(73)
+    })
+
+    it('previous goes back one track early in the song', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+
+      await player.previous()
+
+      expect(player.track.songId).toBe(70)
+    })
+
+    it('previous restarts the track after its first seconds', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+      audio.currentTime = 30
+      audio.fire('timeupdate')
+
+      await player.previous()
+
+      expect(player.track.songId).toBe(71)
+      expect(audio.currentTime).toBe(0)
+    })
+
+    it('previous on the first track restarts it', async () => {
+      await player.playSong(RELEASE, INTRO, TRACKLIST)
+
+      await player.previous()
+
+      expect(player.track.songId).toBe(70)
+      expect(audio.currentTime).toBe(0)
+    })
+
+    it('a failed start keeps the previous queue', async () => {
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+      songService.getFiles.mockResolvedValueOnce([])
+
+      const problem = await player.playSong(RELEASE, OUTRO, [OUTRO])
+
+      expect(problem).toBe('“Outro” has no audio yet.')
+      expect(player.queue.map((entry) => entry.song.id)).toEqual([70, 71, 73])
+      expect(player.track.songId).toBe(71)
+    })
+
+    it('shows the problem when the next track cannot load', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      await player.playSong(RELEASE, SONG, TRACKLIST)
+      songService.getFiles.mockRejectedValueOnce(new Error('Network'))
+
+      await player.next()
+
+      expect(player.error).toBe('Could not load this song. Try again.')
+      expect(player.track.songId).toBe(71)
+    })
+  })
+
+  describe('queue from a song\'s files', () => {
+    it('queues the versions in list order, without fetching', async () => {
+      await player.playFile(RELEASE, SONG, MASTER, [MASTER, MIX])
+
+      await player.next()
+
+      expect(player.track.fileId).toBe(81)
+      expect(songService.getFiles).not.toHaveBeenCalled()
+      expect(player.hasNext).toBe(false)
+    })
+  })
+
+  describe('repeat', () => {
+    it('loops the current track', async () => {
+      await player.playFile(RELEASE, SONG, MIX)
+
+      player.toggleRepeat()
+
+      expect(player.repeat).toBe(true)
+      expect(audio.loop).toBe(true)
+    })
+
+    it('stays on for the next track until switched off', async () => {
+      await player.playFile(RELEASE, SONG, MASTER, [MASTER, MIX])
+      player.toggleRepeat()
+
+      await player.next()
+      expect(audio.loop).toBe(true)
+
+      player.toggleRepeat()
+      expect(audio.loop).toBe(false)
+    })
+  })
+
   describe('following the audio element', () => {
     it('mirrors time, duration and buffering', async () => {
       await player.playFile(RELEASE, SONG, MIX)
@@ -178,14 +313,6 @@ describe('player store', () => {
       audio.fire('durationchange')
 
       expect(player.duration).toBe(0)
-    })
-
-    it('stops showing as playing when the track ends', async () => {
-      await player.playFile(RELEASE, SONG, MIX)
-
-      audio.fire('ended')
-
-      expect(player.playing).toBe(false)
     })
 
     it('seeks the element and the shown position', async () => {
@@ -259,14 +386,19 @@ describe('player store', () => {
     })
   })
 
-  it('stop closes the player and releases the audio', async () => {
-    await player.playFile(RELEASE, SONG, MIX)
+  it('stop closes the player, forgets the queue and releases the audio', async () => {
+    await player.playFile(RELEASE, SONG, MASTER, [MASTER, MIX])
+    player.toggleRepeat()
 
     player.stop()
 
     expect(player.track).toBeNull()
     expect(player.isActive).toBe(false)
     expect(player.playing).toBe(false)
+    expect(player.queue).toEqual([])
+    expect(player.hasNext).toBe(false)
+    expect(player.repeat).toBe(false)
+    expect(audio.loop).toBe(false)
     expect(audio.src).toBe('')
     expect(audio.load).toHaveBeenCalled()
   })

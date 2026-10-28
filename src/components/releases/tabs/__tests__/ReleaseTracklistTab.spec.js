@@ -190,7 +190,11 @@ describe('ReleaseTracklistTab', () => {
       await wrapper.find('button[aria-label="Play Intro"]').trigger('click')
       await flushPromises()
 
-      expect(playSong).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }), expect.objectContaining({ id: intro.id }))
+      expect(playSong).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 42 }),
+        expect.objectContaining({ id: intro.id }),
+        [expect.objectContaining({ id: intro.id })],
+      )
     })
 
     it('explains why a song could not play', async () => {

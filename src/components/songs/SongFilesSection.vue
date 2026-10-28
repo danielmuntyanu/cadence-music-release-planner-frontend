@@ -161,7 +161,7 @@ async function confirmDelete() {
           color="primary"
           variant="tonal"
           size="small"
-          @click="player.playFile(release, song, file)"
+          @click="player.playFile(release, song, file, files)"
         />
 
         <div class="min-w-0 flex-1">

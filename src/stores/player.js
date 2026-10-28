@@ -11,11 +11,21 @@ import { songService } from '@/services/song.service'
  * @property {string} subtitle    "File name · Release name"
  * @property {string | null} artworkUrl
  * @property {string} url         Signed and short-lived
+ *
+ * @typedef {Object} QueueEntry
+ * @property {Object} song
+ * @property {Object | null} file  null: the song's main file, fetched when its turn comes
  */
+
+// "Previous" restarts the track instead when it has played longer than this
+const RESTART_THRESHOLD_SECONDS = 3
 
 /**
  * One player for the whole app. The <audio> element lives in PlayerBar, which attaches it here;
  * this store drives it and mirrors its state, so any page can start or pause playback.
+ *
+ * The queue depends on where playback started: a release's songs (their main files, in tracklist
+ * order) or one song's files (its versions, in list order).
  */
 export const usePlayerStore = defineStore('player', () => {
   /** @type {import('vue').Ref<PlayerTrack | null>} */
@@ -25,10 +35,19 @@ export const usePlayerStore = defineStore('player', () => {
   const currentTime = ref(0)
   const duration = ref(0)
   const error = ref(null)
+  const repeat = ref(false)
   // The song whose files are being fetched before it can start
   const loadingSongId = ref(null)
 
+  /** @type {import('vue').Ref<QueueEntry[]>} */
+  const queue = ref([])
+  const queueIndex = ref(-1)
+  // The release the queue belongs to: its name and cover are shown for every track
+  let queueRelease = null
+
   const isActive = computed(() => track.value !== null)
+  const hasNext = computed(() => queueIndex.value >= 0 && queueIndex.value < queue.value.length - 1)
+  const hasPrevious = computed(() => queueIndex.value > 0)
 
   /** @type {HTMLAudioElement | null} */
   let audio = null
@@ -38,7 +57,11 @@ export const usePlayerStore = defineStore('player', () => {
   const handlers = {
     play: () => { playing.value = true },
     pause: () => { playing.value = false },
-    ended: () => { playing.value = false },
+    // With repeat on, the element loops by itself and never fires "ended"
+    ended: () => {
+      playing.value = false
+      if (hasNext.value) next()
+    },
     timeupdate: () => { currentTime.value = audio.currentTime },
     durationchange: () => { duration.value = Number.isFinite(audio.duration) ? audio.duration : 0 },
     waiting: () => { buffering.value = true },
@@ -49,6 +72,7 @@ export const usePlayerStore = defineStore('player', () => {
   function attach(element) {
     detach()
     audio = element
+    audio.loop = repeat.value
     for (const [event, handler] of Object.entries(handlers)) audio.addEventListener(event, handler)
   }
 
@@ -79,6 +103,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (!audio) return
 
     audio.src = next.url
+    audio.loop = repeat.value
     if (startAt > 0) {
       // Seeking before the metadata is known would be ignored
       audio.addEventListener('loadedmetadata', () => { audio.currentTime = startAt }, { once: true })
@@ -104,38 +129,105 @@ export const usePlayerStore = defineStore('player', () => {
     else audio.pause()
   }
 
-  /** Plays one specific file, or pauses and resumes it when it is already loaded */
-  async function playFile(release, song, file) {
-    if (isCurrentFile(file.id)) return toggle()
+  // ---------- Queue ----------
+
+  /**
+   * Plays one entry of the queue. A song entry fetches its files now, not earlier:
+   * signed URLs expire, so a link fetched at the start of an album would be stale by its end.
+   * Returns an error message, or null when playback started.
+   */
+  async function playAt(index) {
+    const entry = queue.value[index]
+    if (!entry) return null
+
     urlRenewed = false
-    await load(toTrack(release, song, file))
+    if (entry.file) {
+      queueIndex.value = index
+      await load(toTrack(queueRelease, entry.song, entry.file))
+      return null
+    }
+
+    loadingSongId.value = entry.song.id
+    try {
+      const files = await songService.getFiles(queueRelease.id, entry.song.id)
+      const file = files.find((candidate) => candidate.primary) ?? files[0]
+      if (!file) return `“${entry.song.title}” has no audio yet.`
+
+      queueIndex.value = index
+      await load(toTrack(queueRelease, entry.song, file))
+      return null
+    } catch (e) {
+      console.error('### player/playAt failed:\n', e)
+      return 'Could not load this song. Try again.'
+    } finally {
+      loadingSongId.value = null
+    }
+  }
+
+  /** Swaps in a new queue and starts it; on failure the previous queue and track stay as they were */
+  async function startQueue(release, entries, index) {
+    const previous = { entries: queue.value, index: queueIndex.value, release: queueRelease }
+    queue.value = entries
+    queueRelease = release
+
+    const problem = await playAt(index)
+    if (problem) {
+      queue.value = previous.entries
+      queueIndex.value = previous.index
+      queueRelease = previous.release
+    }
+    return problem
   }
 
   /**
-   * Plays the song's file with the heart, or its newest one. Pauses and resumes when the song
-   * is already loaded. Returns an error message, or null when playback started.
+   * From a release's tracklist: plays this song, then the next songs that have a main file.
+   * Pauses and resumes when the song is already loaded.
+   * Returns an error message, or null when playback started.
    */
-  async function playSong(release, song) {
+  async function playSong(release, song, songs = [song]) {
     if (isCurrentSong(song.id)) {
       await toggle()
       return null
     }
 
-    loadingSongId.value = song.id
-    try {
-      const files = await songService.getFiles(release.id, song.id)
-      const file = files.find((candidate) => candidate.primary) ?? files[0]
-      if (!file) return `“${song.title}” has no audio yet.`
+    const entries = songs
+      .filter((candidate) => candidate.id === song.id || candidate.primaryFileId != null)
+      .map((candidate) => ({ song: candidate, file: null }))
+    return startQueue(release, entries, entries.findIndex((entry) => entry.song.id === song.id))
+  }
 
-      urlRenewed = false
-      await load(toTrack(release, song, file))
-      return null
-    } catch (e) {
-      console.error('### player/playSong failed:\n', e)
-      return 'Could not load this song. Try again.'
-    } finally {
-      loadingSongId.value = null
+  /**
+   * From one song's file list: plays this file, then the other versions in list order.
+   * Pauses and resumes when the file is already loaded.
+   */
+  async function playFile(release, song, file, files = [file]) {
+    if (isCurrentFile(file.id)) return toggle()
+
+    const entries = files.map((candidate) => ({ song, file: candidate }))
+    await startQueue(release, entries, entries.findIndex((entry) => entry.file.id === file.id))
+  }
+
+  async function next() {
+    if (!hasNext.value) return
+    const problem = await playAt(queueIndex.value + 1)
+    if (problem) error.value = problem
+  }
+
+  /** Restarts the track after its first seconds, as music players do; otherwise goes back one */
+  async function previous() {
+    if (!track.value) return
+    if (currentTime.value > RESTART_THRESHOLD_SECONDS || !hasPrevious.value) {
+      seek(0)
+      return
     }
+    const problem = await playAt(queueIndex.value - 1)
+    if (problem) error.value = problem
+  }
+
+  /** Repeats the current track until switched off; stays on when moving to another track */
+  function toggleRepeat() {
+    repeat.value = !repeat.value
+    if (audio) audio.loop = repeat.value
   }
 
   function seek(seconds) {
@@ -152,7 +244,12 @@ export const usePlayerStore = defineStore('player', () => {
     currentTime.value = 0
     duration.value = 0
     error.value = null
+    repeat.value = false
+    queue.value = []
+    queueIndex.value = -1
+    queueRelease = null
     if (!audio) return
+    audio.loop = false
     audio.pause()
     audio.removeAttribute('src')
     audio.load()
@@ -182,7 +279,9 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   return {
-    track, playing, buffering, currentTime, duration, error, loadingSongId, isActive,
-    attach, detach, isCurrentSong, isCurrentFile, playFile, playSong, toggle, seek, stop,
+    track, playing, buffering, currentTime, duration, error, repeat, loadingSongId,
+    queue, queueIndex, isActive, hasNext, hasPrevious,
+    attach, detach, isCurrentSong, isCurrentFile, playSong, playFile, toggle,
+    next, previous, toggleRepeat, seek, stop,
   }
 })

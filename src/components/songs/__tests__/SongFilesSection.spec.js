@@ -90,7 +90,7 @@ describe('SongFilesSection', () => {
 
       await button(wrapper, 'Play mix3').trigger('click')
 
-      expect(playFile).toHaveBeenCalledWith(RELEASE, SONG, MIX)
+      expect(playFile).toHaveBeenCalledWith(RELEASE, SONG, MIX, [MASTER, MIX])
     })
 
     it('moves the heart and reports the change', async () => {

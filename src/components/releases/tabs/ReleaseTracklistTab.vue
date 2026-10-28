@@ -95,7 +95,8 @@ const hasAudio = (song) => song.fileCount > 0
 const isPlaying = (song) => player.isCurrentSong(song.id) && player.playing
 
 async function onPlay(song) {
-  const problem = await player.playSong(props.release, song)
+  // The whole tracklist, in order: the player queues the songs that have a main file
+  const problem = await player.playSong(props.release, song, songs.value)
   if (problem) notify(problem, 'error')
 }
 
