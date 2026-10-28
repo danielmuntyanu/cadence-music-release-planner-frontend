@@ -156,4 +156,39 @@ describe('PlayerBar', () => {
 
     expect(detach).toHaveBeenCalled()
   })
+
+  describe('room for the player', () => {
+    const height = () => document.documentElement.style.getPropertyValue('--player-bar-height')
+
+    it('publishes its height while open, so dialogs keep that space free', async () => {
+      await mountBar()
+
+      expect(height()).toMatch(/^\d+px$/)
+    })
+
+    it('removes the height when closed', async () => {
+      const { wrapper, player } = await mountBar()
+
+      player.stop()
+      await flushPromises()
+
+      expect(height()).toBe('')
+      expect(wrapper.findComponent({ name: 'VFooter' }).exists()).toBe(false)
+    })
+
+    it('removes the height when unmounted', async () => {
+      const { wrapper } = await mountBar()
+
+      wrapper.unmount()
+
+      expect(height()).toBe('')
+    })
+
+    it('sits above dialogs, so it can be used while one is open', async () => {
+      const { wrapper } = await mountBar()
+
+      const zIndex = Number(wrapper.findComponent({ name: 'VFooter' }).element.style.zIndex)
+      expect(zIndex).toBeGreaterThan(2000)
+    })
+  })
 })

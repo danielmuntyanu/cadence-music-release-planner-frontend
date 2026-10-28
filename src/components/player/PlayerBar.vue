@@ -1,18 +1,56 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import { usePlayerStore } from '@/stores/player'
 import { ICONS } from '@/constants/icons'
 import { formatDuration } from '@/utils/song-format'
 
+// Vuetify overlays (dialogs, menus) start at 2000: above them, the player stays usable
+// while a dialog is open. Its scrim only closes the dialog when the scrim itself is clicked
+const PLAYER_Z_INDEX = 2500
+
 const player = usePlayerStore()
 const audio = ref(null)
+const footer = ref(null)
 
 // Phones keep the essentials next to the title; repeat and the clock need a wider screen
 const { smAndUp } = useDisplay()
 
 onMounted(() => player.attach(audio.value))
-onBeforeUnmount(() => player.detach())
+
+// ---------- Room for the player ----------
+
+// Dialogs read --player-bar-height (see main.css) and keep that space free at the bottom
+const root = document.documentElement
+let observer = null
+
+const publishHeight = (element) => root.style.setProperty('--player-bar-height', `${element.offsetHeight}px`)
+const clearHeight = () => root.style.removeProperty('--player-bar-height')
+
+watch(
+  footer,
+  (component) => {
+    observer?.disconnect()
+    observer = null
+
+    const element = component?.$el
+    if (!element) return clearHeight()
+
+    publishHeight(element)
+    observer = new ResizeObserver(() => publishHeight(element))
+    observer.observe(element)
+  },
+  // After the DOM updates, so the footer element exists and has its final height
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  clearHeight()
+  player.detach()
+})
+
+// ---------- Seeking ----------
 
 // While the thumb is dragged it follows the pointer, not the playback
 const dragValue = ref(null)
@@ -35,7 +73,14 @@ function onSlideEnd(value) {
   <!-- Always in the DOM: playback continues across pages and while the bar is closed and reopened -->
   <audio ref="audio" preload="metadata" class="hidden" />
 
-  <v-footer v-if="player.isActive" app elevation="8" class="player-bar flex-col items-stretch">
+  <v-footer
+    v-if="player.isActive"
+    ref="footer"
+    app
+    elevation="8"
+    class="player-bar flex-col items-stretch"
+    :style="{ zIndex: PLAYER_Z_INDEX }"
+  >
     <v-slider
       :model-value="position"
       :max="player.duration || 1"

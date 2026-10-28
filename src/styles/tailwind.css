@@ -149,3 +149,19 @@
   text-align: inherit;
   cursor: pointer;
 }
+
+
+/*
+ * While the player is open, dialogs keep its height free at the bottom: they stay centred
+ * in the space above it, so the player remains visible and usable on the song page.
+ * --player-bar-height is set by PlayerBar and removed when it closes.
+ */
+.v-overlay.v-dialog:not(.v-dialog--fullscreen) > .v-overlay__content {
+  margin-bottom: calc(24px + var(--player-bar-height, 0px));
+  max-height: calc(100% - 48px - var(--player-bar-height, 0px));
+}
+
+/* Messages at the bottom of the screen appear above the player, not behind it */
+.v-snackbar .v-snackbar__wrapper {
+  margin-bottom: calc(8px + var(--player-bar-height, 0px));
+}
