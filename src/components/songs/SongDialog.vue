@@ -3,7 +3,8 @@ import { computed, nextTick, ref, watch } from 'vue'
 import CopyButton from '@/components/common/CopyButton.vue'
 import ExpandableText from '@/components/common/ExpandableText.vue'
 import SongFilesSection from '@/components/songs/SongFilesSection.vue'
-import { SONG_STATUSES, getSongStatus } from '@/constants/song-statuses'
+import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
+import { SONG_STATUSES } from '@/constants/song-statuses'
 import { ICONS } from '@/constants/icons'
 import { songService } from '@/services/song.service'
 import { useSubmit } from '@/composables/useSubmit'
@@ -28,9 +29,10 @@ const mode = ref('view')
 const form = ref(createSongForm())
 const formRef = ref(null)
 const titleField = ref(null)
+const statusSaving = ref(false)
+const statusError = ref(null)
 
 const isNew = computed(() => !props.song)
-const status = computed(() => getSongStatus(props.song?.status))
 const heading = computed(() => {
   if (mode.value === 'view') return props.song?.title
   return isNew.value ? 'Add song' : 'Edit song'
@@ -61,6 +63,7 @@ async function focusTitle() {
 watch(open, (isOpen) => {
   if (!isOpen) return
   error.value = null
+  statusError.value = null
   form.value = createSongForm(props.song)
   mode.value = isNew.value || props.startInEdit ? 'edit' : 'view'
   if (mode.value === 'edit') focusTitle()
@@ -102,6 +105,21 @@ async function save() {
   open.value = false
 }
 
+/** A quick change from the read view: saved at once, the dialog stays open */
+async function changeStatus(status) {
+  statusSaving.value = true
+  statusError.value = null
+  try {
+    const updated = await songService.updateStatus(props.releaseId, props.song.id, status)
+    emit('saved', updated, { created: false })
+  } catch (e) {
+    console.error('### songs/updateStatus failed:\n', e)
+    statusError.value = 'Could not change the status. Try again.'
+  } finally {
+    statusSaving.value = false
+  }
+}
+
 /** Deleting is confirmed by SongDeleteDialog, owned by the tracklist: this dialog only hands over */
 function requestDelete() {
   open.value = false
@@ -125,27 +143,13 @@ function requestDelete() {
         <v-btn :icon="ICONS.CLOSE" variant="text" size="small" aria-label="Close" :disabled="loading" @click="open = false" />
       </v-card-title>
 
-      <!-- Read view -->
+      <!-- Read view: what people work with first (files, lyrics), then the reference details -->
       <v-card-text v-if="mode === 'view' && song" class="px-4 pb-2 sm:px-6">
-        <div class="mb-3 flex flex-wrap items-center gap-2">
-          <v-chip :color="status.color" :prepend-icon="status.icon" size="small" variant="tonal">{{ status.label }}</v-chip>
+        <div class="mb-1 flex flex-wrap items-center gap-2">
+          <SongStatusMenu :status="song.status" :loading="statusSaving" @change="changeStatus" />
           <v-chip v-if="song.explicit" size="small" variant="outlined" prepend-icon="mdi-alpha-e-box-outline">Explicit</v-chip>
         </div>
-
-        <div class="detail-row">
-          <span class="text-sm text-on-surface-variant">Length</span>
-          <span :class="song.durationSeconds ? 'font-medium text-primary' : 'text-on-surface-variant'">
-            {{ song.durationSeconds ? formatDuration(song.durationSeconds) : 'Not set' }}
-          </span>
-        </div>
-        <div class="detail-row">
-          <span class="text-sm text-on-surface-variant">ISRC</span>
-          <span v-if="song.isrc" class="flex items-center gap-1">
-            <span class="font-mono font-medium text-primary">{{ formatIsrc(song.isrc) }}</span>
-            <CopyButton :text="song.isrc" label="Copy ISRC" />
-          </span>
-          <span v-else class="text-on-surface-variant">Not set</span>
-        </div>
+        <p v-if="statusError" class="text-xs text-error" role="alert">{{ statusError }}</p>
 
         <SongFilesSection
           v-if="release"
@@ -160,6 +164,22 @@ function requestDelete() {
           <CopyButton v-if="song.lyrics" :text="song.lyrics" label="Copy lyrics" />
         </div>
         <ExpandableText :text="song.lyrics" :lines="8" placeholder="No lyrics yet." class="text-on-surface" />
+
+        <p class="mb-1 mt-5 text-xs uppercase tracking-wider text-on-surface-variant">Details</p>
+        <div class="detail-row">
+          <span class="text-sm text-on-surface-variant">Length</span>
+          <span :class="song.durationSeconds ? 'font-medium text-primary' : 'text-on-surface-variant'">
+            {{ song.durationSeconds ? formatDuration(song.durationSeconds) : 'Not set' }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="text-sm text-on-surface-variant">ISRC</span>
+          <span v-if="song.isrc" class="flex items-center gap-1">
+            <span class="font-mono font-medium text-primary">{{ formatIsrc(song.isrc) }}</span>
+            <CopyButton :text="song.isrc" label="Copy ISRC" />
+          </span>
+          <span v-else class="text-on-surface-variant">Not set</span>
+        </div>
       </v-card-text>
 
       <!-- Form -->
@@ -190,8 +210,9 @@ function requestDelete() {
               item-value="value"
               label="Status"
             >
+              <!-- Vuetify 4: `item` is the option itself (the wrapper is `internalItem`) -->
               <template #item="{ props: itemProps, item }">
-                <v-list-item v-bind="itemProps" :prepend-icon="item.raw.icon" :base-color="item.raw.color" />
+                <v-list-item v-bind="itemProps" :prepend-icon="item.icon" :base-color="item.color" />
               </template>
             </v-select>
           </div>

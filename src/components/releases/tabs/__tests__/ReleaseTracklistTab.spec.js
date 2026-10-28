@@ -292,5 +292,16 @@ describe('song dialog', () => {
 
     expect(wrapper.emitted('songs-changed')).toHaveLength(1)
   })
+
+  it('shows the saved song in the dialog that is still open', async () => {
+      const wrapper = await mountTab()
+      await wrapper.find(`button[aria-label="Open ${title.title}"]`).trigger('click')
+
+      const saved = { ...title, status: 'DONE' }
+      wrapper.findComponent(SongDialog).vm.$emit('saved', saved, { created: false })
+      await flushPromises()
+
+      expect(wrapper.findComponent(SongDialog).props('song')).toEqual(saved)
+    })
 })
 

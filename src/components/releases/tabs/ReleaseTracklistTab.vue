@@ -117,6 +117,8 @@ function onSaved(saved, { created }) {
     songs.value = songs.value.map((song) => (song.id === saved.id ? saved : song))
     notify('Song saved')
   }
+  // The dialog may still be open (a status change keeps it open): show it the saved song too
+  if (dialogSong.value?.id === saved.id) dialogSong.value = saved
   emit('songs-changed')
 }
 

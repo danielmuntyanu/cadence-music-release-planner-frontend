@@ -7,9 +7,10 @@ import ExpandableText from '@/components/common/ExpandableText.vue'
 import { songService } from '@/services/song.service'
 import { mountWithPlugins } from '@/test-utils/mount'
 import { makeSong } from '@/test-utils/fixtures/songs'
+import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
 
 vi.mock('@/services/song.service', () => ({
-  songService: { create: vi.fn(), replace: vi.fn(), getFiles: vi.fn().mockResolvedValue([]) },
+  songService: { create: vi.fn(), replace: vi.fn(), updateStatus: vi.fn(), getFiles: vi.fn().mockResolvedValue([]) },
 }))
 
 const RELEASE = { id: 42, name: 'Neon Siesta', artworkUrl: null }
@@ -219,6 +220,58 @@ describe('SongDialog', () => {
       await submitForm(wrapper)
 
       expect(songService.replace).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('status from the read view', () => {
+    it('saves a new status at once and keeps the dialog open', async () => {
+      const updated = { ...SONG, status: 'DONE' }
+      songService.updateStatus.mockResolvedValue(updated)
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(songService.updateStatus).toHaveBeenCalledWith(42, 71, 'DONE')
+      expect(wrapper.emitted('saved')).toEqual([[updated, { created: false }]])
+      expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    })
+
+    it('shows the status as saving meanwhile', async () => {
+      songService.updateStatus.mockReturnValue(new Promise(() => {}))
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(wrapper.findComponent(SongStatusMenu).props('loading')).toBe(true)
+    })
+
+    it('explains a failed change and reports nothing', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      songService.updateStatus.mockRejectedValue(new Error('Network'))
+      const wrapper = await openDialog({ song: SONG })
+
+      wrapper.findComponent(SongStatusMenu).vm.$emit('change', 'DONE')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('Could not change the status. Try again.')
+      expect(wrapper.emitted('saved')).toBeUndefined()
+    })
+  })
+
+  describe('status options in the form', () => {
+    it('renders every status with its icon and color', async () => {
+      const wrapper = await openDialog({ song: SONG, startInEdit: true })
+      const select = wrapper.findAllComponents({ name: 'VSelect' }).find((s) => s.props('label') === 'Status')
+
+      await select.find('.v-field').trigger('mousedown')
+      await flushPromises()
+
+      // Opening the list used to crash on item.raw with Vuetify 4
+      const items = wrapper.findAllComponents({ name: 'VListItem' })
+      const recording = items.find((item) => item.props('title') === 'Recording')
+      expect(recording.props()).toMatchObject({ prependIcon: 'mdi-microphone-outline', baseColor: 'warning' })
     })
   })
 })
