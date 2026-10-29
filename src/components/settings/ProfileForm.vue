@@ -4,8 +4,10 @@ import { useAuthStore } from '@/stores/auth'
 import { userService } from '@/services/user.service'
 import { bioRules, displayNameRules, emailRules, usernameRules } from '@/utils/validators'
 import { useSubmit } from '@/composables/useSubmit'
+import { useRouter } from 'vuetify/lib/composables/router.mjs'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const fromUser = (u) => ({
   username: u?.username ?? '',
@@ -45,7 +47,20 @@ async function onSubmit(event) {
 
   await submit(async () => {
     await userService.updateProfile(changes.value)
-    await auth.fetchMe() // the server is the source of truth
+    
+    if (changes.value?.username !== auth.user.value?.username) {
+      // goes to login page after a short time to get new JWT-tokens because of new username
+      setTimeout(async () => {
+        try {
+          await auth.logout()
+        } finally {
+          router.push('/login')
+        }
+      }, 1500)
+
+    } else {
+      await auth.fetchMe() // the server is the source of truth
+    }
   })
 }
 </script>

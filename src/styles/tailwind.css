@@ -73,7 +73,7 @@
 
   &::before {
     content: '';
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
@@ -95,7 +95,7 @@
 
   &::after {
     content: '';
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: -1;
     pointer-events: none;
@@ -133,4 +133,35 @@
     padding: 0;
     list-style: none;
   }
+}
+
+
+/* Native <button> without browser chrome, for custom clickable areas (song titles, release cover).
+   Needed because Tailwind's preflight, which normally resets buttons, is not loaded alongside Vuetify */
+.plain-button {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+
+/*
+ * While the player is open, dialogs keep its height free at the bottom: they stay centred
+ * in the space above it, so the player remains visible and usable on the song page.
+ * --player-bar-height is set by PlayerBar and removed when it closes.
+ */
+.v-overlay.v-dialog:not(.v-dialog--fullscreen) > .v-overlay__content {
+  margin-bottom: calc(24px + var(--player-bar-height, 0px));
+  max-height: calc(100% - 48px - var(--player-bar-height, 0px));
+}
+
+/* Messages at the bottom of the screen appear above the player, not behind it */
+.v-snackbar .v-snackbar__wrapper {
+  margin-bottom: calc(8px + var(--player-bar-height, 0px));
 }

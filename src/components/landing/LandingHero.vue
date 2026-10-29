@@ -6,9 +6,9 @@ import { useLandingCta } from '@/composables/useLandingCta'
 const cta = useLandingCta()
 
 const highlights = [
-  "Built around Spotify's 4-week pitch window",
-  'Apple Music and TIDAL delivery checklists',
-  'Free while in beta',
+  "Private storage for masters and artwork",
+  'Progress from writing to mastering',
+  'Free during beta',
 ]
 </script>
 
@@ -24,16 +24,17 @@ const highlights = [
             prepend-icon="mdi-rocket-launch-outline"
             class="mb-6"
           >
-            MVP preview · Release planning for independent artists
+            MVP · The release workspace for independent musicians
           </v-chip>
 
           <h1 class="text-4xl font-medium leading-tight text-on-surface md:text-6xl">
-            Never Miss a Drop. The Timeline-Driven Planner for Music Releases.
+            Every Release, Every Track, Every File. In One Place.
           </h1>
 
           <p class="mx-auto mt-6 max-w-2xl text-lg text-on-surface-variant">
-            Ditch fragmented spreadsheets and messy DMs. Coordinate mastering deadlines, artwork
-            deliverables, distribution windows and launch day in one workspace.
+            Cadence keeps your artists, releases, tracklists, audio versions 
+            and artwork together, so you always know what’s ready, what’s 
+            missing and which mix is the final one.
           </p>
 
           <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

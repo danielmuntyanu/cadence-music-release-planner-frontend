@@ -2,8 +2,15 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { authService } from '@/services/auth.service'
 import { ROLES } from '@/constants/roles'
+import { useArtistsStore } from './artists'
+import { useReleasesStore } from './releases'
+import { usePlayerStore } from './player'
 
 export const useAuthStore = defineStore('auth', () => {
+  const artists = useArtistsStore()
+  const releases = useReleasesStore()
+  const player = usePlayerStore()
+
   /** @type {import('@/models/user').User | null} */
   const user = ref(null)
   const ready = ref(false)
@@ -42,6 +49,10 @@ export const useAuthStore = defineStore('auth', () => {
       await authService.logout()
     } finally {
       user.value = null
+      // Private audio must not keep playing for whoever uses the browser next
+      player.stop()
+      artists.reset()
+      releases.reset()
     }
   }
 
@@ -59,6 +70,10 @@ export const useAuthStore = defineStore('auth', () => {
     return Array.isArray(required) && required.some((role) => hasRole(role))
   }
 
-  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole, register }
+  /** Replaces the current user with fresh data from a response (e.g. after an avatar change) */
+  function setUser(value) {
+    user.value = value
+  }
 
+  return { user, ready, isAuthenticated, roles, isAdmin, init, fetchMe, login, logout, hasRole, hasAnyRole, register, setUser }
 })

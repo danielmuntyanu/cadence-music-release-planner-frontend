@@ -1,0 +1,307 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
+import { VueDraggable } from 'vue-draggable-plus'
+import ReleaseTracklistTab from '@/components/releases/tabs/ReleaseTracklistTab.vue'
+import SongStatusMenu from '@/components/songs/SongStatusMenu.vue'
+import SongDeleteDialog from '@/components/songs/SongDeleteDialog.vue'
+import { songService } from '@/services/song.service'
+import { mountWithPlugins } from '@/test-utils/mount'
+import { makeRelease } from '@/test-utils/fixtures/releases'
+import SongDialog from '@/components/songs/SongDialog.vue'
+import ReleaseProgress from '../../ReleaseProgress.vue'
+import { makeSong } from '@/test-utils/fixtures/songs'
+import { usePlayerStore } from '@/stores/player'
+
+
+vi.mock('@/services/song.service', () => ({
+  songService: { getAll: vi.fn(), reorder: vi.fn(), updateStatus: vi.fn(), delete: vi.fn() },
+}))
+
+const song = (id, title, extra = {}) => makeSong({ id, title, ...extra })
+
+const intro = song(71, 'Intro', { durationSeconds: 60 })
+const title = song(72, 'Night Drive', { durationSeconds: 215, isrc: 'USABC2600001', explicit: true })
+const outro = song(73, 'Outro', { durationSeconds: 125 })
+
+async function mountTab(songs = [intro, title, outro]) {
+  songService.getAll.mockResolvedValue(songs)
+  const wrapper = mountWithPlugins(ReleaseTracklistTab, {
+    props: { release: makeRelease({ id: 42, name: 'Night Drive' }) },
+    attachTo: document.body,
+  })
+  await flushPromises()
+  return wrapper
+}
+
+const rowTitles = (wrapper) => wrapper.findAll('.song-row').map((row) => row.find('.song-title .truncate').text())
+
+/** Simulates a drag that ends with the given order */
+async function dragTo(wrapper, order) {
+  const draggable = wrapper.findComponent(VueDraggable)
+  draggable.vm.$emit('start')
+  draggable.vm.$emit('update:modelValue', order)
+  draggable.vm.$emit('end')
+  await flushPromises()
+}
+
+describe('ReleaseTracklistTab', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  describe('display', () => {
+    it('loads the tracklist of this release', async () => {
+      const wrapper = await mountTab()
+
+      expect(songService.getAll).toHaveBeenCalledWith(42)
+      expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive', 'Outro'])
+    })
+
+    it('sums up the song count and total duration', async () => {
+      const wrapper = await mountTab()
+
+      expect(wrapper.text()).toContain('3 songs · 6:40')
+    })
+
+    it('marks explicit songs', async () => {
+      const wrapper = await mountTab()
+
+      const rows = wrapper.findAll('.song-row')
+      expect(rows[1].find('[aria-label="Explicit"]').exists()).toBe(true)
+      expect(rows[0].find('[aria-label="Explicit"]').exists()).toBe(false)
+    })
+
+    it('keeps the ISRC out of the row: it belongs to the song details', async () => {
+      const wrapper = await mountTab()
+
+      expect(wrapper.text()).not.toContain('US-ABC-26-00001')
+      expect(wrapper.findComponent({ name: 'CopyButton' }).exists()).toBe(false)
+    })
+
+    it('shows an empty state without songs', async () => {
+      const wrapper = await mountTab([])
+
+      expect(wrapper.text()).toContain('No tracks yet')
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Add song')).toBe(true)
+    })
+  })
+
+  describe('reordering', () => {
+    it('saves a dragged order and keeps the confirmed tracklist', async () => {
+      songService.reorder.mockResolvedValue([outro, intro, title])
+      const wrapper = await mountTab()
+
+      await dragTo(wrapper, [outro, intro, title])
+
+      expect(songService.reorder).toHaveBeenCalledWith(42, [73, 71, 72])
+      expect(rowTitles(wrapper)).toEqual(['Outro', 'Intro', 'Night Drive'])
+    })
+
+    it('does not save when the order did not change', async () => {
+      const wrapper = await mountTab()
+
+      await dragTo(wrapper, [intro, title, outro])
+
+      expect(songService.reorder).not.toHaveBeenCalled()
+    })
+
+    it('moves a song with the menu, for keyboard users', async () => {
+      songService.reorder.mockResolvedValue([title, intro, outro])
+      const wrapper = await mountTab()
+
+      await wrapper.findAll('button[aria-label^="Actions for"]')[1].trigger('click')
+      await flushPromises()
+      await wrapper.findAllComponents({ name: 'VListItem' }).find((item) => item.props('title') === 'Move up').trigger('click')
+      await flushPromises()
+
+      expect(songService.reorder).toHaveBeenCalledWith(42, [72, 71, 73])
+    })
+
+    it('reloads the tracklist when the server says the order is stale', async () => {
+      songService.reorder.mockRejectedValue({ response: { status: 400 } })
+      const wrapper = await mountTab()
+      songService.getAll.mockResolvedValue([intro, outro])
+
+      await dragTo(wrapper, [outro, intro, title])
+
+      expect(songService.getAll).toHaveBeenCalledTimes(2)
+      expect(rowTitles(wrapper)).toEqual(['Intro', 'Outro'])
+      expect(document.body.textContent).toContain('The tracklist changed elsewhere')
+    })
+
+    it('restores the previous order when saving fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      songService.reorder.mockRejectedValue(new Error('Network'))
+      const wrapper = await mountTab()
+
+      await dragTo(wrapper, [outro, intro, title])
+
+      expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive', 'Outro'])
+      expect(document.body.textContent).toContain('Could not save the new order')
+    })
+  })
+
+  describe('status and delete', () => {
+    it('changes a status from the row', async () => {
+      songService.updateStatus.mockResolvedValue({ ...intro, status: 'RECORDING' })
+      const wrapper = await mountTab()
+
+      wrapper.findAllComponents(SongStatusMenu)[0].vm.$emit('change', 'RECORDING')
+      await flushPromises()
+
+      expect(songService.updateStatus).toHaveBeenCalledWith(42, 71, 'RECORDING')
+      expect(wrapper.findAllComponents(SongStatusMenu)[0].props('status')).toBe('RECORDING')
+    })
+
+    it('removes a deleted song from the list', async () => {
+      const wrapper = await mountTab()
+
+      wrapper.findComponent(SongDeleteDialog).vm.$emit('deleted', title)
+      await flushPromises()
+
+      expect(rowTitles(wrapper)).toEqual(['Intro', 'Outro'])
+    })
+  })
+
+  it('summarizes length, explicit songs and statuses', async () => {
+    const wrapper = await mountTab([
+      intro,
+      { ...title, status: 'DONE' },
+      { ...outro, durationSeconds: null, status: 'DONE' },
+    ])
+
+    const text = wrapper.text()
+    expect(text).toContain('1 without length')
+    expect(text).toMatch(/Explicit\s*1/)
+    expect(text).toMatch(/Done\s*2/)
+    expect(text).toMatch(/Writing\s*1/)
+  })
+
+  describe('playback', () => {
+    it('offers a play button only for songs with audio', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 2 }, { ...title, fileCount: 0 }])
+
+      expect(wrapper.find('button[aria-label="Play Intro"]').exists()).toBe(true)
+      expect(wrapper.find('button[aria-label="Play Night Drive"]').exists()).toBe(false)
+    })
+
+    it('plays the song through the global player', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 1 }])
+      const playSong = vi.spyOn(usePlayerStore(), 'playSong').mockResolvedValue(null)
+
+      await wrapper.find('button[aria-label="Play Intro"]').trigger('click')
+      await flushPromises()
+
+      expect(playSong).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 42 }),
+        expect.objectContaining({ id: intro.id }),
+        [expect.objectContaining({ id: intro.id })],
+      )
+    })
+
+    it('explains why a song could not play', async () => {
+      const wrapper = await mountTab([{ ...intro, fileCount: 1 }])
+      vi.spyOn(usePlayerStore(), 'playSong').mockResolvedValue('“Intro” has no audio yet.')
+
+      await wrapper.find('button[aria-label="Play Intro"]').trigger('click')
+      await flushPromises()
+
+      expect(document.body.textContent).toContain('“Intro” has no audio yet.')
+    })
+
+    it('stops the player when the playing song is deleted', async () => {
+      const wrapper = await mountTab()
+      const player = usePlayerStore()
+      vi.spyOn(player, 'isCurrentSong').mockImplementation((id) => id === title.id)
+      const stop = vi.spyOn(player, 'stop')
+
+      wrapper.findComponent(SongDeleteDialog).vm.$emit('deleted', title)
+      await flushPromises()
+
+      expect(stop).toHaveBeenCalled()
+    })
+
+    it('gives the song dialog the release, and reloads when its files change', async () => {
+      const wrapper = await mountTab()
+      expect(wrapper.findComponent(SongDialog).props('release')).toMatchObject({ id: 42 })
+
+      wrapper.findComponent(SongDialog).vm.$emit('files-changed')
+      await flushPromises()
+
+      expect(songService.getAll).toHaveBeenCalledTimes(2)
+    })
+  })
+})
+
+describe('song dialog', () => {
+  it('opens the read view when a title is clicked', async () => {
+    const wrapper = await mountTab()
+
+    await wrapper.find('button[aria-label="Open Night Drive"]').trigger('click')
+
+    const dialog = wrapper.findComponent(SongDialog)
+    expect(dialog.props()).toMatchObject({ modelValue: true, song: title, startInEdit: false })
+  })
+
+  it('opens an empty form from Add song', async () => {
+    const wrapper = await mountTab()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Add song').trigger('click')
+
+    expect(wrapper.findComponent(SongDialog).props()).toMatchObject({ modelValue: true, song: null })
+  })
+
+  it('appends a created song to the end', async () => {
+    const wrapper = await mountTab()
+    const created = song(74, 'Bonus Track')
+
+    wrapper.findComponent(SongDialog).vm.$emit('saved', created, { created: true })
+    await flushPromises()
+
+    expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive', 'Outro', 'Bonus Track'])
+  })
+
+  it('replaces an edited song in place', async () => {
+    const wrapper = await mountTab()
+
+    wrapper.findComponent(SongDialog).vm.$emit('saved', { ...title, title: 'Night Drive (Edit)' }, { created: false })
+    await flushPromises()
+
+    expect(rowTitles(wrapper)).toEqual(['Intro', 'Night Drive (Edit)', 'Outro'])
+  })
+
+  it('opens the delete confirmation when the dialog asks to delete', async () => {
+    const wrapper = await mountTab()
+
+    wrapper.findComponent(SongDialog).vm.$emit('delete', title)
+    await flushPromises()
+
+    expect(wrapper.findComponent(SongDeleteDialog).props()).toMatchObject({ modelValue: true, song: title })
+  })
+
+  it('shows live progress computed from the songs', async () => {
+    const wrapper = await mountTab([{ ...intro, status: 'DONE' }, { ...title, status: 'WRITING' }])
+
+    expect(wrapper.findComponent(ReleaseProgress).props()).toMatchObject({ percent: 50, done: 1, total: 2 })
+  })
+
+  it('reports song changes so the page can refresh derived values', async () => {
+    songService.updateStatus.mockResolvedValue({ ...intro, status: 'DONE' })
+    const wrapper = await mountTab()
+
+    wrapper.findAllComponents(SongStatusMenu)[0].vm.$emit('change', 'DONE')
+    await flushPromises()
+
+    expect(wrapper.emitted('songs-changed')).toHaveLength(1)
+  })
+
+  it('shows the saved song in the dialog that is still open', async () => {
+      const wrapper = await mountTab()
+      await wrapper.find(`button[aria-label="Open ${title.title}"]`).trigger('click')
+
+      const saved = { ...title, status: 'DONE' }
+      wrapper.findComponent(SongDialog).vm.$emit('saved', saved, { created: false })
+      await flushPromises()
+
+      expect(wrapper.findComponent(SongDialog).props('song')).toEqual(saved)
+    })
+})
+

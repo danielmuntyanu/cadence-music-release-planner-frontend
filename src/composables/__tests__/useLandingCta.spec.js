@@ -18,7 +18,7 @@ describe('useLandingCta', () => {
 
     const cta = useLandingCta()
 
-    expect(cta.value).toEqual({ to: '/dashboard', text: 'Open dashboard' })
+    expect(cta.value).toEqual({ to: '/artists', text: 'Open dashboard' })
   })
 
   it('reacts when the authentication state changes', () => {
@@ -27,7 +27,7 @@ describe('useLandingCta', () => {
     expect(cta.value.to).toBe('/register')
 
     auth.user = { id: 1, username: 'daniel', roles: ['USER'] }
-    expect(cta.value.to).toBe('/dashboard')
+    expect(cta.value.to).toBe('/artists')
 
     auth.user = null
     expect(cta.value.to).toBe('/register')

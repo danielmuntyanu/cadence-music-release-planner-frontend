@@ -1,92 +1,97 @@
-# Cadence — Music Release Planner
+# Cadence — Music Release Planner · Frontend
 
 🔗 **Frontend repo:** [cadence-frontend](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend)
-
 🔗 **Backend repo:** [cadence-backend](https://github.com/danielmuntyanu/cadence-music-release-planner-backend)
 
-## Project Concept
+📖 **Documentation:** [Frontend wiki](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki) · [Backend wiki](https://github.com/danielmuntyanu/cadence-music-release-planner-backend/wiki)
 
-Cadence is a planning and coordination tool built for independent musicians and small labels to manage the full lifecycle of a music release — not just as a status tracker, but as a **timeline-driven planner** for everything that happens around a release: mastering deadlines, artwork approval, distribution windows, promo posts, and more.
+The web app for **Cadence** — a workspace where independent musicians manage every release, every track and every file in one place.
 
-Most artists currently juggle this process across spreadsheets, sticky notes, and DMs. Cadence consolidates it into a single, structured workspace where each release becomes a project with its own calendar, task board, and progress view.
+![Cadence](./docs/images/home.png)
 
-## Description
+## Highlights
 
-At its core, Cadence models a **release** as a central entity with:
-- A timeline of key dates (recording done, mixing, mastering, artwork, submission, release day, promo push)
-- A set of tasks tied to each milestone, assignable and trackable via a Kanban board
-- A calendar view that aggregates tasks and milestones across all active releases
+| | |
+|---|---|
+| 🎧 **Global player** | Plays a release in tracklist order or compares versions of a song; keeps playing across pages |
+| ⬆️ **Direct uploads** | Masters up to 500 MB go straight to storage, with progress and cancel |
+| ✏️ **Inline editing** | Edit any release field in place: Enter to save, Esc to cancel |
+| ↕️ **Drag-and-drop tracklist** | Optimistic reordering with rollback on failure |
+| 🔗 **Shareable filters** | Search, filters, sort and page are kept in the URL |
+| 🔒 **No tokens in JavaScript** | HttpOnly cookies, silent refresh, CSRF header |
+| 📱 **Responsive** | Separate layouts for phone, tablet and desktop |
+| 🌗 **Two themes** | Studio Dark and Daylight |
 
-The application is a full-stack web app with a Vue 3 frontend and a Spring Boot REST API backend, built as a capstone project for a Java Full-Stack Developer Bootcamp — with an eye toward being genuinely usable afterward, not just a demo.
+## Tech Stack
 
-**Tech stack:**
-- **Frontend:** Vue 3, Vuetify, Tailwind CSS, Axios, Vitest, Playwright
-- **Backend:** Java 21 (LTS), Spring Boot, Spring Web, Spring Data JPA, JWT authentication
-- **Database:** MySQL
+| Area | Technology |
+|---|---|
+| Framework | Vue 3 (`<script setup>`) · Vite |
+| UI | Vuetify 4 · Tailwind CSS 4 · Material Design Icons |
+| State | Pinia |
+| Routing | Vue Router |
+| HTTP | Axios with auth and refresh interceptors |
+| Drag and drop | vue-draggable-plus |
+| Testing | Vitest · Vue Test Utils · jsdom · Playwright |
+| Code quality | ESLint · Oxlint · Prettier |
 
-## User Flow 
+## Architecture
 
-```mermaid
-flowchart TD
-    A[Landing Page] --> B{Has account?}
-    B -- No --> C[Register]
-    B -- Yes --> D[Login]
-    C --> F[Dashboard]
-    D --> F[Dashboard]
-
-    F --> V1[Artists View]
-    F --> V2[Releases View]
-    F --> V3[Calendar View]
-    F --> V4[Tasks View]
-
-    V1 --> V1a[Add / edit artist]
-    V1 --> V1b[Open artist profile]
-    V1b --> V1c[Linked releases for this artist]
-
-    V2 --> V2a[Create new release]
-    V2 --> V2b[Open release detail]
-    V2b --> V2c[Timeline / milestones]
-    V2b --> V2d[Release task board]
-
-    V3 --> V3a[Milestones & tasks across all releases]
-    V3a --> V3b[Open task details]
-    V3a --> V3c[Open milestone details]
-    V3b --> V2d
-    V3c --> V2c
-
-    V4 --> V4a[Global task board across all releases]
-    V4a --> V2b
+```
+views → components → stores / composables → services → api.js (axios) → REST API
+                                               ↓
+                                            models (DTO → app shape)
 ```
 
-## MVP Features
+| Layer | Responsibility |
+|---|---|
+| `services/` | One function per endpoint, returns models |
+| `models/` | Map and validate server data with safe defaults |
+| `stores/` | Shared state: auth, artists, releases, player |
+| `composables/` | Reusable logic: `useSubmit`, `useInlineEdit`, `useImageUpload` |
+| `constants/` | Enums mirrored from the backend, with labels, colors, icons |
+| `components/` | Feature folders: `artists`, `releases`, `songs`, `player`, `common`, `landing` |
 
-- **Authentication & Security** — user registration/login, JWT-based auth, protected API routes
-- **Landing Page** — public-facing project introduction and entry point
-- **Release Management** — create, edit, and view releases with core metadata (title, type, target date)
-- **Release Timeline** — define and edit key milestone dates per release
-- **Task Board** — Kanban-style task management scoped to a release (To Do / In Progress / Done)
-- **Calendar View** — unified calendar showing milestones and tasks across all releases
-- **REST API** — documented endpoints covering releases, tasks, and auth
-- **Test Suite** — unit tests (Vitest, JUnit) and E2E coverage (Playwright) for critical flows
+More: [Architecture](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Architecture) · [Features](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Features) · [User Flow](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/User-Flow) · [Security](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Security)
+
+## Getting Started
+
+Requires Node.js `^22.18.0` or `>=24.12.0` and the [backend](https://github.com/danielmuntyanu/cadence-music-release-planner-backend) running locally.
+
+```bash
+npm install
+echo "VITE_API_URL=https://localhost:8443/api/v1" > .env.local
+npm run dev
+```
+
+Open `https://localhost:5173`. Local HTTPS setup: [Get Started](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Get-Started).
+
+## Scripts
+
+| Command | Does |
+|---|---|
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production build |
+| `npm run preview` | Preview the production build |
+| `npm run test:unit` | Unit and component tests (Vitest) |
+| `npx vitest run --coverage` | Coverage report in `coverage/` |
+| `npm run test:e2e` | End-to-end tests (Playwright; run `npx playwright install` first) |
+| `npm run lint` | Oxlint + ESLint |
+| `npm run format` | Prettier |
+
+## Testing
+
+Models, utils, services, stores, composables, components and views are covered with Vitest and Vue Test Utils. Results: [Testing](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Testing).
 
 ## Roadmap
 
-### Phase 1 — Foundation
-- Project initialization (frontend + backend scaffolding, CI setup)
-- Authentication & authorization (JWT, protected routes)
-- Landing page
+| Status | Scope |
+|---|---|
+| ✅ | Landing page, auth, artists, releases, tracklist, audio files, global player |
+| 🔜 | Tasks and key dates per release, calendar view |
+| 🔜 | Pitching to playlists and press |
+| 💡 | Reminders, collaborators, AI assistance |
 
-### Phase 2 — Releases
-- Release entity CRUD
-- Release timeline / milestone structure
-- Release detail view
+## Author
 
-### Phase 3 — Planning
-- Task creation and Kanban board per release
-- Calendar view aggregating tasks and milestones
-- Task-to-milestone linking
-
-### Phase 4 — Post-MVP
-- File attachments (artwork, mix references)
-- Notifications/reminders for upcoming milestones
-- AI-features to improve creativity and efficiency
+**Daniel Muntyanu** — [GitHub](https://github.com/danielmuntyanu)

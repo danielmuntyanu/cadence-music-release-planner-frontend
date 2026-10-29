@@ -28,21 +28,64 @@ const routes = [
     meta: { requiresAuth: true, }
   },
   {
-    path: "/dashboard",
-    name: "dashboard",
-    component: () => import("../views/DashboardView.vue"),
+    path: "/artists",
+    name: "artists",
+    component: () => import("../views/ArtistsView.vue"),
     meta: { requiresAuth: true, }
   },
   {
+    path: '/artists/:id(\\d+)',
+    name: 'artist-detail',
+    component: () => import('@/views/ArtistDetailView.vue'),
+    props: true,
+    meta: { requiresAuth: true, }
+  },
+  {
+    path: '/releases',
+    name: 'releases',
+    component: () => import('@/views/ReleasesView.vue'),
+    meta: { requiresAuth: true, }
+  },
+  {
+    path: '/releases/:id(\\d+)',
+    props: true,
+    component: () => import('@/views/ReleaseDetailView.vue'),
+    meta: { requiresAuth: true, },
+    children: [
+      // The empty child carries the 'release-detail' name, so existing links open Overview
+      {
+        path: '',
+        name: 'release-detail',
+        component: () => import('@/components/releases/tabs/ReleaseOverviewTab.vue'),
+      },
+      {
+        path: 'tracklist',
+        name: 'release-tracklist',
+        component: () => import('@/components/releases/tabs/ReleaseTracklistTab.vue'),
+      },
+  ],
+  },
+  // {
+  //   path: "/dashboard",
+  //   name: "dashboard",
+  //   component: () => import("../views/DashboardView.vue"),
+  //   meta: { requiresAuth: true, }
+  // },
+  {
     path: "/admin",
     name: "admin",
-    component: () => import("../views/DashboardView.vue"),
+    component: () => import("../views/AdminView.vue"),
     meta: { roles: [ROLES.ADMIN], }
   },
   {
     path: "/forbidden",
     name: "forbidden",
     component: () => import("../views/ForbiddenView.vue"),
+  }, 
+  {
+    path: '/:pathMatch(.*)*',
+    name: "not-found",
+    component: () => import("../views/NotFoundView.vue"),
   }
 ]
 

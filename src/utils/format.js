@@ -1,0 +1,1 @@
+export const pluralize = (count, word) => `${count} ${count === 1 ? word : `${word}s`}`

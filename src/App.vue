@@ -1,5 +1,6 @@
 <script setup>
-import AppHeader from '@/components/AppHeader.vue';
+import AppHeader from '@/components/AppHeader.vue'
+import PlayerBar from '@/components/player/PlayerBar.vue'
 </script>
 
 <template>
@@ -8,5 +9,7 @@ import AppHeader from '@/components/AppHeader.vue';
     <v-main>
       <router-view />
     </v-main>
+    <!-- Outside the router view, so playback continues when the page changes -->
+    <PlayerBar />
   </v-app>
 </template>

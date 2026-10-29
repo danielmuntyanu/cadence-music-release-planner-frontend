@@ -9,7 +9,7 @@ const api = axios.create({
   xsrfHeaderName: 'X-XSRF-TOKEN',
 })
 
-// A 401 from these endpoints is final: refreshing cannot help (or would loop)
+// A 401 or 403 from these endpoints is final: refreshing cannot help (or would loop)
 const NO_REFRESH_PATHS = ['/auth/login', '/auth/refresh', '/auth/logout']
 
 let refreshPromise = null
