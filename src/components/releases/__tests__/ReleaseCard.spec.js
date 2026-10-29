@@ -90,10 +90,11 @@ describe('ReleaseCard', () => {
     it('keeps its buttons above the card link, so they still work on their own', () => {
       const wrapper = mountCard()
 
-      const phaseWrapper = wrapper.findComponent(ReleasePhaseMenu).element.parentElement
-      const menuWrapper = wrapper.findComponent(ReleaseActionsMenu).element.parentElement
-      expect(phaseWrapper.classList).toContain('z-[1]')
-      expect(menuWrapper.classList).toContain('z-[1]')
+      // v-menu has several root nodes, so .element is already the element around the menu:
+      // closest() finds the raised wrapper whatever the exact nesting is
+      const isRaised = (component) => wrapper.findComponent(component).element.closest('.z-1') !== null
+      expect(isRaised(ReleasePhaseMenu)).toBe(true)
+      expect(isRaised(ReleaseActionsMenu)).toBe(true)
     })
   })
 })

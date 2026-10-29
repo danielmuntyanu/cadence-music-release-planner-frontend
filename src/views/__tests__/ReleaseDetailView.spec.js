@@ -31,8 +31,10 @@ async function mountView(id = '42', router = createTestRouter(), path = `/releas
   return { wrapper, router }
 }
 
+// The header has its own snackbar (cover download), so look for the one that is open
 function expectSnackbar(wrapper, message) {
-  expect(wrapper.findComponent({ name: 'VSnackbar' }).props('modelValue')).toBe(true)
+  const open = wrapper.findAllComponents({ name: 'VSnackbar' }).filter((snackbar) => snackbar.props('modelValue'))
+  expect(open).toHaveLength(1)
   expect(document.body.textContent).toContain(message)
 }
 

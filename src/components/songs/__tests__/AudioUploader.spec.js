@@ -130,7 +130,11 @@ describe('AudioUploader', () => {
       report(0.4)
       await flushPromises()
 
-      expect(wrapper.findComponent({ name: 'VProgressLinear' }).props('modelValue')).toBe(40)
+      // Not the first VProgressLinear: Vuetify fields contain their own hidden loader bar
+      const bar = wrapper
+        .findAllComponents({ name: 'VProgressLinear' })
+        .find((progress) => progress.attributes('aria-label') === 'Upload progress')
+      expect(bar.props('modelValue')).toBe(40)
       expect(wrapper.text()).toContain('40%')
     })
   })
