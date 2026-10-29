@@ -1,69 +1,97 @@
-# cadence-frontend
+# Cadence — Music Release Planner · Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+🔗 **Frontend repo:** [cadence-frontend](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend)
+🔗 **Backend repo:** [cadence-backend](https://github.com/danielmuntyanu/cadence-music-release-planner-backend)
 
-## Recommended IDE Setup
+📖 **Documentation:** [Frontend wiki](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki) · [Backend wiki](https://github.com/danielmuntyanu/cadence-music-release-planner-backend/wiki)
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+The web app for **Cadence** — a workspace where independent musicians manage every release, every track and every file in one place.
 
-## Recommended Browser Setup
+![Cadence](./docs/images/home.png)
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+## Highlights
 
-## Customize configuration
+| | |
+|---|---|
+| 🎧 **Global player** | Plays a release in tracklist order or compares versions of a song; keeps playing across pages |
+| ⬆️ **Direct uploads** | Masters up to 500 MB go straight to storage, with progress and cancel |
+| ✏️ **Inline editing** | Edit any release field in place: Enter to save, Esc to cancel |
+| ↕️ **Drag-and-drop tracklist** | Optimistic reordering with rollback on failure |
+| 🔗 **Shareable filters** | Search, filters, sort and page are kept in the URL |
+| 🔒 **No tokens in JavaScript** | HttpOnly cookies, silent refresh, CSRF header |
+| 📱 **Responsive** | Separate layouts for phone, tablet and desktop |
+| 🌗 **Two themes** | Studio Dark and Daylight |
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## Tech Stack
 
-## Project Setup
+| Area | Technology |
+|---|---|
+| Framework | Vue 3 (`<script setup>`) · Vite |
+| UI | Vuetify 4 · Tailwind CSS 4 · Material Design Icons |
+| State | Pinia |
+| Routing | Vue Router |
+| HTTP | Axios with auth and refresh interceptors |
+| Drag and drop | vue-draggable-plus |
+| Testing | Vitest · Vue Test Utils · jsdom · Playwright |
+| Code quality | ESLint · Oxlint · Prettier |
 
-```sh
-npm install
+## Architecture
+
+```
+views → components → stores / composables → services → api.js (axios) → REST API
+                                               ↓
+                                            models (DTO → app shape)
 ```
 
-### Compile and Hot-Reload for Development
+| Layer | Responsibility |
+|---|---|
+| `services/` | One function per endpoint, returns models |
+| `models/` | Map and validate server data with safe defaults |
+| `stores/` | Shared state: auth, artists, releases, player |
+| `composables/` | Reusable logic: `useSubmit`, `useInlineEdit`, `useImageUpload` |
+| `constants/` | Enums mirrored from the backend, with labels, colors, icons |
+| `components/` | Feature folders: `artists`, `releases`, `songs`, `player`, `common`, `landing` |
 
-```sh
+More: [Architecture](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Architecture) · [Features](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Features) · [User Flow](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/User-Flow) · [Security](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Security)
+
+## Getting Started
+
+Requires Node.js `^22.18.0` or `>=24.12.0` and the [backend](https://github.com/danielmuntyanu/cadence-music-release-planner-backend) running locally.
+
+```bash
+npm install
+echo "VITE_API_URL=https://localhost:8443/api/v1" > .env.local
 npm run dev
 ```
 
-### Compile and Minify for Production
+Open `https://localhost:5173`. Local HTTPS setup: [Get Started](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Get-Started).
 
-```sh
-npm run build
-```
+## Scripts
 
-### Run Unit Tests with [Vitest](https://vitest.dev/)
+| Command | Does |
+|---|---|
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production build |
+| `npm run preview` | Preview the production build |
+| `npm run test:unit` | Unit and component tests (Vitest) |
+| `npx vitest run --coverage` | Coverage report in `coverage/` |
+| `npm run test:e2e` | End-to-end tests (Playwright; run `npx playwright install` first) |
+| `npm run lint` | Oxlint + ESLint |
+| `npm run format` | Prettier |
 
-```sh
-npm run test:unit
-```
+## Testing
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
+Models, utils, services, stores, composables, components and views are covered with Vitest and Vue Test Utils. Results: [Testing](https://github.com/danielmuntyanu/cadence-music-release-planner-frontend/wiki/Testing).
 
-```sh
-# Install browsers for the first run
-npx playwright install
+## Roadmap
 
-# When testing on CI, must build the project first
-npm run build
+| Status | Scope |
+|---|---|
+| ✅ | Landing page, auth, artists, releases, tracklist, audio files, global player |
+| 🔜 | Tasks and key dates per release, calendar view |
+| 🔜 | Pitching to playlists and press |
+| 💡 | Reminders, collaborators, AI assistance |
 
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
+## Author
 
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
-npm run lint
-```
+**Daniel Muntyanu** — [GitHub](https://github.com/danielmuntyanu)
