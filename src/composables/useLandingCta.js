@@ -7,7 +7,7 @@ export function useLandingCta() {
 
   return computed(() =>
     auth.isAuthenticated
-      ? { to: '/dashboard', text: 'Open dashboard' }
+      ? { to: '/artists', text: 'Open dashboard' }
       : { to: '/register', text: 'Create your release plan' },
   )
 }
